@@ -15,6 +15,9 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Serve React app from dist directory (if built)
+app.use(express.static(path.join(__dirname, 'dist')));
+
 // CORS middleware for webhook testing
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -144,7 +147,12 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
+// Serve React app for all other routes (SPA routing)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
+// 404 handler (fallback)
 app.use((req, res) => {
   res.status(404).json({ 
     status: 'NOT_FOUND', 

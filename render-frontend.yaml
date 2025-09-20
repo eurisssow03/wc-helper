@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: wc-helper-frontend
+    env: static
+    plan: free
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: NODE_ENV
+        value: production
