@@ -65,38 +65,64 @@ app.get('/webhook/whatsapp', (req, res) => {
 // Webhook message handler
 app.post('/webhook/whatsapp', (req, res) => {
   console.log('📨 Received webhook message:', JSON.stringify(req.body, null, 2));
+  console.log('📨 Headers:', JSON.stringify(req.headers, null, 2));
   
   try {
     const body = req.body;
     
+    // Log the raw body for debugging
+    console.log('📨 Raw body type:', typeof body);
+    console.log('📨 Body object:', body.object);
+    
     if (body.object === 'whatsapp_business_account') {
-      body.entry.forEach(entry => {
-        entry.changes.forEach(change => {
+      console.log('✅ Valid WhatsApp Business Account object');
+      
+      body.entry.forEach((entry, entryIndex) => {
+        console.log(`📨 Processing entry ${entryIndex}:`, entry.id);
+        
+        entry.changes.forEach((change, changeIndex) => {
+          console.log(`📨 Processing change ${changeIndex}:`, change.field);
+          
           if (change.field === 'messages') {
+            console.log('✅ Messages field detected');
+            
             const messages = change.value.messages;
-            if (messages) {
-              messages.forEach(message => {
-                console.log('📱 New message details:', {
+            if (messages && messages.length > 0) {
+              console.log(`📨 Found ${messages.length} messages`);
+              
+              messages.forEach((message, messageIndex) => {
+                console.log(`📱 Message ${messageIndex} details:`, {
                   from: message.from,
                   text: message.text?.body,
                   type: message.type,
                   timestamp: message.timestamp,
-                  messageId: message.id
+                  messageId: message.id,
+                  rawMessage: message
                 });
                 
-                // TODO: Process message and send reply using your RAG system
-                // This is where you would integrate with your React app's AI logic
+                // Process the message here
+                console.log('🤖 Processing message:', message.text?.body);
+                
+                // TODO: Integrate with your React app's AI logic
+                // This is where you would call your RAG system
                 console.log('🤖 Message processing would happen here...');
               });
+            } else {
+              console.log('⚠️ No messages found in change.value.messages');
             }
+          } else {
+            console.log(`⚠️ Change field is not 'messages': ${change.field}`);
           }
         });
       });
+    } else {
+      console.log('❌ Invalid object type:', body.object);
     }
     
     res.status(200).json({ status: 'OK', message: 'Webhook processed successfully' });
   } catch (error) {
     console.error('❌ Error processing webhook:', error);
+    console.error('❌ Error stack:', error.stack);
     res.status(500).json({ status: 'ERROR', message: 'Internal server error' });
   }
 });
@@ -117,7 +143,49 @@ app.get('/test', (req, res) => {
     message: 'Webhook test endpoint',
     timestamp: new Date().toISOString(),
     webhookUrl: `${req.protocol}://${req.get('host')}/webhook/whatsapp`,
-    verifyToken: process.env.WEBHOOK_VERIFY_TOKEN || 'my_verify_token_123'
+    verifyToken: process.env.WEBHOOK_VERIFY_TOKEN || 'my_verify_token_123',
+    status: 'Ready for WhatsApp messages'
+  });
+});
+
+// Debug endpoint to test webhook message processing
+app.post('/test-webhook', (req, res) => {
+  console.log('🧪 Test webhook called with:', JSON.stringify(req.body, null, 2));
+  
+  // Simulate a WhatsApp message
+  const testMessage = {
+    object: 'whatsapp_business_account',
+    entry: [{
+      id: 'test_entry_debug',
+      changes: [{
+        value: {
+          messaging_product: 'whatsapp',
+          metadata: {
+            display_phone_number: '1234567890',
+            phone_number_id: 'test_phone_id'
+          },
+          messages: [{
+            from: '1234567890',
+            id: 'test_msg_debug',
+            timestamp: Math.floor(Date.now() / 1000).toString(),
+            text: {
+              body: 'Test message from debug endpoint'
+            },
+            type: 'text'
+          }]
+        },
+        field: 'messages'
+      }]
+    }]
+  };
+  
+  // Process the test message
+  console.log('🧪 Processing test message...');
+  
+  res.json({
+    message: 'Test webhook processed',
+    timestamp: new Date().toISOString(),
+    testMessage: testMessage
   });
 });
 
