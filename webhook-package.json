@@ -2,6 +2,7 @@
   "name": "whatsapp-webhook-server",
   "version": "1.0.0",
   "description": "WhatsApp Business API Webhook Server for Customer Service Assistant",
+  "type": "module",
   "main": "webhook-server.js",
   "scripts": {
     "start": "node webhook-server.js",

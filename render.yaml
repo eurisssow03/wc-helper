@@ -8,3 +8,5 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: WEBHOOK_VERIFY_TOKEN
+        value: your_secure_verify_token_here
