@@ -86,9 +86,10 @@ app.post('/webhook/whatsapp', (req, res) => {
           if (change.field === 'messages') {
             console.log('✅ Messages field detected');
             
+            // Check for incoming messages
             const messages = change.value.messages;
             if (messages && messages.length > 0) {
-              console.log(`📨 Found ${messages.length} messages`);
+              console.log(`📨 Found ${messages.length} incoming messages`);
               
               messages.forEach((message, messageIndex) => {
                 console.log(`📱 Message ${messageIndex} details:`, {
@@ -108,7 +109,24 @@ app.post('/webhook/whatsapp', (req, res) => {
                 console.log('🤖 Message processing would happen here...');
               });
             } else {
-              console.log('⚠️ No messages found in change.value.messages');
+              console.log('⚠️ No incoming messages found in change.value.messages');
+            }
+            
+            // Check for status updates
+            const statuses = change.value.statuses;
+            if (statuses && statuses.length > 0) {
+              console.log(`📊 Found ${statuses.length} status updates`);
+              
+              statuses.forEach((status, statusIndex) => {
+                console.log(`📊 Status ${statusIndex}:`, {
+                  messageId: status.id,
+                  status: status.status,
+                  recipient: status.recipient_id,
+                  timestamp: status.timestamp
+                });
+              });
+            } else {
+              console.log('⚠️ No status updates found in change.value.statuses');
             }
           } else {
             console.log(`⚠️ Change field is not 'messages': ${change.field}`);
