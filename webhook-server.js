@@ -135,6 +135,36 @@ async function processMessageWithAI(userMessage, fromNumber) {
   }
 }
 
+// Message Storage Functions
+async function storeMessage(messageData) {
+  try {
+    // In production, this would store to a database
+    // For now, we'll store in a simple in-memory array
+    if (!global.whatsappMessages) {
+      global.whatsappMessages = [];
+    }
+    
+    const message = {
+      ...messageData,
+      receivedAt: new Date().toISOString(),
+      id: messageData.id || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    };
+    
+    global.whatsappMessages.unshift(message); // Add to beginning of array
+    
+    // Keep only last 1000 messages to prevent memory issues
+    if (global.whatsappMessages.length > 1000) {
+      global.whatsappMessages = global.whatsappMessages.slice(0, 1000);
+    }
+    
+    console.log('💾 Message stored:', message.id);
+    return message;
+  } catch (error) {
+    console.error('❌ Error storing message:', error);
+    return null;
+  }
+}
+
 // WhatsApp API Functions (placeholder)
 async function sendWhatsAppReply(toNumber, message) {
   console.log(`📤 Would send WhatsApp reply to ${toNumber}: ${message}`);
@@ -249,11 +279,39 @@ app.post('/webhook/whatsapp', async (req, res) => {
                   const response = await processMessageWithAI(message.text?.body, message.from);
                   console.log('🤖 AI Response:', response.answer);
                   
+                  // Store the message and AI response for the web app
+                  await storeMessage({
+                    id: message.id,
+                    from: message.from,
+                    text: message.text?.body,
+                    type: message.type,
+                    timestamp: message.timestamp,
+                    aiResponse: response.answer,
+                    confidence: response.confidence,
+                    matchedQuestion: response.matchedQuestion,
+                    processingTime: response.processingTime,
+                    status: 'processed'
+                  });
+                  
                   // TODO: Send WhatsApp reply
                   // await sendWhatsAppReply(message.from, response.answer);
                   console.log('📤 Would send reply:', response.answer);
                 } catch (error) {
                   console.error('❌ AI processing error:', error);
+                  
+                  // Store the message even if AI processing fails
+                  await storeMessage({
+                    id: message.id,
+                    from: message.from,
+                    text: message.text?.body,
+                    type: message.type,
+                    timestamp: message.timestamp,
+                    aiResponse: 'Error processing message',
+                    confidence: 0,
+                    matchedQuestion: null,
+                    processingTime: 0,
+                    status: 'error'
+                  });
                 }
               }
             } else {
@@ -313,6 +371,63 @@ app.get('/test', (req, res) => {
     verifyToken: process.env.WEBHOOK_VERIFY_TOKEN || 'my_verify_token_123',
     status: 'Ready for WhatsApp messages'
   });
+});
+
+// API endpoint to get all WhatsApp messages
+app.get('/api/messages', (req, res) => {
+  try {
+    const messages = global.whatsappMessages || [];
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    const paginatedMessages = messages.slice(offset, offset + limit);
+    
+    res.json({
+      success: true,
+      messages: paginatedMessages,
+      total: messages.length,
+      limit,
+      offset,
+      hasMore: offset + limit < messages.length
+    });
+  } catch (error) {
+    console.error('❌ Error fetching messages:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch messages'
+    });
+  }
+});
+
+// API endpoint to get message statistics
+app.get('/api/messages/stats', (req, res) => {
+  try {
+    const messages = global.whatsappMessages || [];
+    
+    const stats = {
+      total: messages.length,
+      processed: messages.filter(m => m.status === 'processed').length,
+      errors: messages.filter(m => m.status === 'error').length,
+      today: messages.filter(m => {
+        const today = new Date().toDateString();
+        const messageDate = new Date(m.receivedAt).toDateString();
+        return today === messageDate;
+      }).length,
+      uniqueCustomers: new Set(messages.map(m => m.from)).size,
+      averageConfidence: messages.reduce((sum, m) => sum + (m.confidence || 0), 0) / messages.length || 0
+    };
+    
+    res.json({
+      success: true,
+      stats
+    });
+  } catch (error) {
+    console.error('❌ Error fetching message stats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch message statistics'
+    });
+  }
 });
 
 // Debug endpoint to test webhook message processing

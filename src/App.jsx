@@ -12,6 +12,7 @@ import { useToast } from "./hooks/useToast.jsx";
 // Import components
 import { LoginPage } from "./components/pages/LoginPage.jsx";
 import { Dashboard } from "./components/pages/Dashboard.jsx";
+import { MessagesPage } from "./components/pages/MessagesPage.jsx";
 import { HomestayData } from "./components/pages/HotelData.jsx";
 import { FAQPage } from "./components/pages/FAQPage.jsx";
 
@@ -96,6 +97,7 @@ function AppShell() {
         </div>
         <div style={baseStyles.page}>
           {active === "Dashboard" && <Dashboard />}
+          {active === "Messages" && <MessagesPage />}
           {active === "Homestay Data" && <HomestayData onSaved={() => show("Saved")} />}
           {active === "FAQ" && <FAQPage onSaved={() => show("Saved")} />}
           {active === "Chat Tester" && <ChatTester onLogged={() => show("Test Recorded")} />}
