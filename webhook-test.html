@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Webhook Tester</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .webhook-url { background: #f0f0f0; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .request { background: #e8f4f8; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #2196F3; }
+        .method { font-weight: bold; color: #2196F3; }
+        .timestamp { color: #666; font-size: 0.9em; }
+        .payload { background: #f9f9f9; padding: 10px; border-radius: 3px; margin-top: 10px; }
+        .clear-btn { background: #f44336; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        .clear-btn:hover { background: #d32f2f; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 WhatsApp Webhook Tester</h1>
+        
+        <div class="webhook-url">
+            <strong>Your Webhook URL:</strong><br>
+            <span id="webhookUrl">Loading...</span>
+            <button onclick="copyUrl()" style="margin-left: 10px; padding: 5px 10px;">Copy URL</button>
+        </div>
+
+        <div style="margin: 20px 0;">
+            <button class="clear-btn" onclick="clearRequests()">Clear All Requests</button>
+            <span style="margin-left: 10px;">Total requests: <span id="requestCount">0</span></span>
+        </div>
+
+        <div id="requests"></div>
+    </div>
+
+    <script>
+        // Generate unique webhook URL
+        const webhookId = Math.random().toString(36).substring(2, 15);
+        const webhookUrl = `https://webhook.site/${webhookId}`;
+        document.getElementById('webhookUrl').textContent = webhookUrl;
+
+        function copyUrl() {
+            navigator.clipboard.writeText(webhookUrl);
+            alert('Webhook URL copied to clipboard!');
+        }
+
+        function clearRequests() {
+            document.getElementById('requests').innerHTML = '';
+            document.getElementById('requestCount').textContent = '0';
+        }
+
+        // Simulate webhook requests (for demonstration)
+        function simulateRequest() {
+            const requests = document.getElementById('requests');
+            const requestCount = document.getElementById('requestCount');
+            
+            const requestDiv = document.createElement('div');
+            requestDiv.className = 'request';
+            
+            const now = new Date();
+            const timestamp = now.toLocaleString();
+            
+            requestDiv.innerHTML = `
+                <div class="method">POST</div>
+                <div class="timestamp">${timestamp}</div>
+                <div class="payload">
+                    <strong>Headers:</strong><br>
+                    Content-Type: application/json<br>
+                    User-Agent: WhatsApp/2.0<br><br>
+                    <strong>Body:</strong><br>
+                    <pre>{
+  "object": "whatsapp_business_account",
+  "entry": [{
+    "id": "123456789",
+    "changes": [{
+      "value": {
+        "messaging_product": "whatsapp",
+        "metadata": {
+          "display_phone_number": "1234567890",
+          "phone_number_id": "987654321"
+        },
+        "messages": [{
+          "from": "1234567890",
+          "id": "wamid.xxx",
+          "timestamp": "1640995200",
+          "text": {
+            "body": "Hello, what time is check-in?"
+          },
+          "type": "text"
+        }]
+      },
+      "field": "messages"
+    }]
+  }]
+}</pre>
+                </div>
+            `;
+            
+            requests.insertBefore(requestDiv, requests.firstChild);
+            requestCount.textContent = parseInt(requestCount.textContent) + 1;
+        }
+
+        // Simulate a request every 30 seconds for demo
+        setInterval(simulateRequest, 30000);
+        
+        // Add initial demo request
+        setTimeout(simulateRequest, 2000);
+    </script>
+</body>
+</html>

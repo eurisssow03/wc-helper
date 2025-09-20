@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WhatsApp Webhook Verification</title>
+</head>
+<body>
+    <script>
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const mode = urlParams.get('hub.mode');
+        const token = urlParams.get('hub.verify_token');
+        const challenge = urlParams.get('hub.challenge');
+        
+        // Check if this is a verification request
+        if (mode === 'subscribe' && token === 'my_verify_token_123') {
+            // Return the challenge code
+            document.write(challenge);
+        } else {
+            document.write('Verification failed');
+        }
+    </script>
+</body>
+</html>

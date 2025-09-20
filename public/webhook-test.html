@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Webhook Test</title>
+</head>
+<body>
+    <script>
+        // Handle webhook verification
+        const urlParams = new URLSearchParams(window.location.search);
+        const mode = urlParams.get('hub.mode');
+        const token = urlParams.get('hub.verify_token');
+        const challenge = urlParams.get('hub.challenge');
+        
+        const VERIFY_TOKEN = 'my_verify_token_123';
+        
+        if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+            // Return the challenge to complete verification
+            document.write(challenge);
+        } else {
+            document.write('Verification failed');
+        }
+    </script>
+</body>
+</html>

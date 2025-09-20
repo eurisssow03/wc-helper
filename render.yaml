@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: whatsapp-webhook
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node webhook-server.js
+    envVars:
+      - key: NODE_ENV
+        value: production

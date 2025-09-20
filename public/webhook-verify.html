@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Webhook Verification</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .info { background: #e3f2fd; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .code { background: #f5f5f5; padding: 10px; border-radius: 3px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 WhatsApp Webhook Verification</h1>
+        
+        <div id="result"></div>
+        
+        <div class="info">
+            <h3>📋 Setup Instructions:</h3>
+            <ol>
+                <li>Set your webhook URL to: <div class="code">https://cc12120fc308.ngrok-free.app/webhook-verify.html</div></li>
+                <li>Set your verify token to: <div class="code">my_verify_token_123</div></li>
+                <li>Click "Verify Webhook" in Meta Business Manager</li>
+            </ol>
+        </div>
+        
+        <div class="info">
+            <h3>🔧 Current Configuration:</h3>
+            <p><strong>Webhook URL:</strong> <span id="webhookUrl"></span></p>
+            <p><strong>Verify Token:</strong> <span id="verifyToken"></span></p>
+            <p><strong>Status:</strong> <span id="status">Waiting for verification...</span></p>
+        </div>
+    </div>
+
+    <script>
+        // Set the verify token (change this to match your settings)
+        const VERIFY_TOKEN = 'my_verify_token_123';
+        
+        // Get current URL and display it
+        const currentUrl = window.location.href;
+        document.getElementById('webhookUrl').textContent = currentUrl;
+        document.getElementById('verifyToken').textContent = VERIFY_TOKEN;
+        
+        // Handle webhook verification
+        const urlParams = new URLSearchParams(window.location.search);
+        const mode = urlParams.get('hub.mode');
+        const token = urlParams.get('hub.verify_token');
+        const challenge = urlParams.get('hub.challenge');
+        
+        const resultDiv = document.getElementById('result');
+        const statusSpan = document.getElementById('status');
+        
+        if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+            resultDiv.innerHTML = '<h2 class="success">✅ Webhook Verified Successfully!</h2><p>Challenge: ' + challenge + '</p>';
+            statusSpan.textContent = 'Verified';
+            statusSpan.className = 'success';
+            
+            // Return the challenge to complete verification
+            document.body.innerHTML = challenge;
+        } else if (mode === 'subscribe') {
+            resultDiv.innerHTML = '<h2 class="error">❌ Webhook Verification Failed</h2><p>Token mismatch. Expected: ' + VERIFY_TOKEN + ', Got: ' + token + '</p>';
+            statusSpan.textContent = 'Failed';
+            statusSpan.className = 'error';
+        } else {
+            resultDiv.innerHTML = '<h2>📡 Webhook Endpoint Ready</h2><p>This endpoint is ready to receive WhatsApp messages.</p>';
+            statusSpan.textContent = 'Ready';
+        }
+    </script>
+</body>
+</html>
