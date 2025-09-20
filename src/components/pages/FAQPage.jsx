@@ -42,6 +42,14 @@ export function FAQPage({ onSaved }) {
   
   const startEdit = (idx) => setEditing({ ...list[idx], __idx: idx });
 
+  const toggleActive = (idx) => {
+    const next = [...list];
+    next[idx] = { ...next[idx], is_active: !next[idx].is_active, updated_by: session.email, updated_at: nowISO() };
+    setList(next);
+    writeLS(STORAGE_KEYS.faqs, next);
+    onSaved?.();
+  };
+
   const save = async () => {
     const errs = []; 
     if (!editing.question?.trim()) errs.push("Question is required"); 
@@ -118,7 +126,23 @@ export function FAQPage({ onSaved }) {
                   </div>
                 </td>
                 <td style={baseStyles.td}>
-                  <button style={baseStyles.btnGhost} onClick={()=>startEdit(idx)}>Edit</button>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <button 
+                      style={{
+                        ...baseStyles.btnGhost,
+                        backgroundColor: f.is_active ? '#dcfce7' : '#fee2e2',
+                        color: f.is_active ? '#166534' : '#991b1b',
+                        border: f.is_active ? '1px solid #16a34a' : '1px solid #dc2626',
+                        fontSize: '0.8rem',
+                        padding: '4px 8px'
+                      }}
+                      onClick={() => toggleActive(idx)}
+                      title={f.is_active ? 'Click to disable' : 'Click to enable'}
+                    >
+                      {f.is_active ? '✓ Enabled' : '✗ Disabled'}
+                    </button>
+                    <button style={baseStyles.btnGhost} onClick={()=>startEdit(idx)}>Edit</button>
+                  </div>
                 </td>
               </tr>
             ))}
