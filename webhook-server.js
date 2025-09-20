@@ -101,22 +101,6 @@ app.post('/webhook/whatsapp', (req, res) => {
   }
 });
 
-// Root path handler
-app.get('/', (req, res) => {
-  res.json({ 
-    message: 'WhatsApp Webhook Server is running!',
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    version: '1.0.0',
-    endpoints: {
-      webhook: '/webhook/whatsapp',
-      health: '/health',
-      test: '/test'
-    },
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
-
 // Health check
 app.get('/health', (req, res) => {
   res.json({ 
@@ -137,6 +121,22 @@ app.get('/test', (req, res) => {
   });
 });
 
+// API info endpoint (moved from root)
+app.get('/api', (req, res) => {
+  res.json({ 
+    message: 'WhatsApp Webhook Server is running!',
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    endpoints: {
+      webhook: '/webhook/whatsapp',
+      health: '/health',
+      test: '/test'
+    },
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('❌ Server error:', err);
@@ -147,7 +147,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Serve React app for all other routes (SPA routing)
+// Serve React app for all other routes (SPA routing) - MUST BE LAST
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
