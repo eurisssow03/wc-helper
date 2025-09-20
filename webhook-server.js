@@ -1,12 +1,147 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// AI Processing Functions
+async function processMessageWithAI(userMessage, fromNumber) {
+  console.log('🧠 Starting AI processing for:', userMessage);
+  
+  try {
+    // Load sample data (in production, this would come from a database)
+    const sampleFAQs = [
+      {
+        question: "What time is check-in?",
+        answer: "Check-in time is 3:00 PM. Please share your booking details for further check in procedure.",
+        tags: ["check-in", "time", "early"],
+        is_active: true
+      },
+      {
+        question: "What time is check-out?",
+        answer: "Check-out time is 12:00 PM. Late check-out may be available upon request, subject to room availability and additional charges.",
+        tags: ["check-out", "time", "late"],
+        is_active: true
+      },
+      {
+        question: "Do you have parking?",
+        answer: "Yes, we offer complimentary parking for all guests. Valet parking is also available for an additional fee. Please inform us of your vehicle details upon check-in.",
+        tags: ["parking", "valet", "complimentary"],
+        is_active: true
+      },
+      {
+        question: "Is Wi-Fi available?",
+        answer: "Yes, complimentary high-speed Wi-Fi is available throughout the homestay. The network name and password will be provided upon check-in.",
+        tags: ["wifi", "internet", "complimentary"],
+        is_active: true
+      }
+    ];
+
+    const sampleHomestays = [
+      {
+        name: "Trefoil Shah Alam",
+        city: "Shah Alam",
+        checkin_time: "15:00",
+        checkout_time: "12:00",
+        amenities: ["Free Wi-Fi", "Swimming Pool", "Fitness Center", "Restaurant", "Parking"]
+      },
+      {
+        name: "Palas Horizon Cameron",
+        city: "Cameron Highlands", 
+        checkin_time: "14:00",
+        checkout_time: "11:00",
+        amenities: ["Free Wi-Fi", "Mountain View", "Tea Garden Access", "Restaurant", "Parking"]
+      }
+    ];
+
+    // Simple keyword matching (in production, use your RAG system)
+    const query = userMessage.toLowerCase();
+    let bestMatch = null;
+    let confidence = 0;
+
+    for (const faq of sampleFAQs) {
+      if (!faq.is_active) continue;
+      
+      const questionWords = faq.question.toLowerCase().split(' ');
+      const queryWords = query.split(' ');
+      const tagWords = faq.tags.map(t => t.toLowerCase());
+      
+      let matchScore = 0;
+      
+      // Check question match
+      questionWords.forEach(qWord => {
+        if (queryWords.some(q => q.includes(qWord) || qWord.includes(q))) {
+          matchScore += 2;
+        }
+      });
+      
+      // Check tag match
+      tagWords.forEach(tag => {
+        if (queryWords.some(q => q.includes(tag) || tag.includes(q))) {
+          matchScore += 1;
+        }
+      });
+      
+      // Check direct text match
+      if (query.includes(faq.question.toLowerCase()) || faq.question.toLowerCase().includes(query)) {
+        matchScore += 3;
+      }
+      
+      if (matchScore > confidence) {
+        confidence = matchScore;
+        bestMatch = faq;
+      }
+    }
+
+    let answer = "Sorry, I couldn't understand your question. We will have someone contact you soon.";
+    
+    if (bestMatch && confidence > 0) {
+      answer = bestMatch.answer;
+      
+      // Add homestay information for general questions
+      if (query.includes('check-in') || query.includes('checkout') || query.includes('amenities')) {
+        answer += "\n\nOur homestays:\n";
+        sampleHomestays.forEach(homestay => {
+          answer += `• ${homestay.name} (${homestay.city}): Check-in ${homestay.checkin_time}, Check-out ${homestay.checkout_time}\n`;
+        });
+      }
+    }
+
+    // Add greeting for first message
+    if (query.includes('hello') || query.includes('hi') || query.includes('help')) {
+      answer = "Hello! Welcome to our homestay service. " + answer;
+    }
+
+    return {
+      answer: answer,
+      confidence: confidence / 10, // Normalize to 0-1
+      matchedQuestion: bestMatch?.question || null,
+      processingTime: Date.now()
+    };
+
+  } catch (error) {
+    console.error('❌ AI processing error:', error);
+    return {
+      answer: "Sorry, I'm having trouble processing your message. Please try again or contact us directly.",
+      confidence: 0,
+      matchedQuestion: null,
+      processingTime: Date.now()
+    };
+  }
+}
+
+// WhatsApp API Functions (placeholder)
+async function sendWhatsAppReply(toNumber, message) {
+  console.log(`📤 Would send WhatsApp reply to ${toNumber}: ${message}`);
+  // TODO: Implement WhatsApp API sending
+  // This would use the WhatsApp Business API to send messages
+  return { success: true, messageId: 'placeholder' };
+}
 
 // Middleware
 app.use(express.json());
@@ -104,9 +239,17 @@ app.post('/webhook/whatsapp', (req, res) => {
                 // Process the message here
                 console.log('🤖 Processing message:', message.text?.body);
                 
-                // TODO: Integrate with your React app's AI logic
-                // This is where you would call your RAG system
-                console.log('🤖 Message processing would happen here...');
+                // Process the message with AI
+                try {
+                  const response = await processMessageWithAI(message.text?.body, message.from);
+                  console.log('🤖 AI Response:', response.answer);
+                  
+                  // TODO: Send WhatsApp reply
+                  // await sendWhatsAppReply(message.from, response.answer);
+                  console.log('📤 Would send reply:', response.answer);
+                } catch (error) {
+                  console.error('❌ AI processing error:', error);
+                }
               });
             } else {
               console.log('⚠️ No incoming messages found in change.value.messages');
