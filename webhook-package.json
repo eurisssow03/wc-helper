@@ -1,16 +1,31 @@
 {
   "name": "whatsapp-webhook-server",
   "version": "1.0.0",
-  "description": "WhatsApp Business API Webhook Server",
+  "description": "WhatsApp Business API Webhook Server for Customer Service Assistant",
   "main": "webhook-server.js",
   "scripts": {
     "start": "node webhook-server.js",
-    "dev": "nodemon webhook-server.js"
+    "dev": "nodemon webhook-server.js",
+    "test": "node test-webhook.js",
+    "test:local": "WEBHOOK_URL=http://localhost:3001 node test-webhook.js",
+    "test:production": "node test-webhook.js"
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^4.21.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
-  }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "whatsapp",
+    "webhook",
+    "customer-service",
+    "ai",
+    "chatbot"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
 }
