@@ -21,6 +21,23 @@ function initOnce() {
   if (!localStorage.getItem(STORAGE_KEYS.homestays)) writeLS(STORAGE_KEYS.homestays, []);
   if (!localStorage.getItem(STORAGE_KEYS.faqs)) writeLS(STORAGE_KEYS.faqs, []);
   if (!localStorage.getItem(STORAGE_KEYS.logs)) writeLS(STORAGE_KEYS.logs, []);
+  if (!localStorage.getItem(STORAGE_KEYS.users)) {
+    // Initialize with default admin user
+    const defaultUsers = [
+      {
+        id: "admin-001",
+        username: "admin@demo.com",
+        password: "Passw0rd!",
+        role: "admin",
+        is_active: true,
+        created_by: "system",
+        created_at: nowISO(),
+        updated_by: "system",
+        updated_at: nowISO()
+      }
+    ];
+    writeLS(STORAGE_KEYS.users, defaultUsers);
+  }
 }
 
 export function useAuth() {
@@ -32,24 +49,24 @@ export function useAuth() {
   }, []);
   
   useEffect(() => { 
-    (async () => { 
-      if (!users) { 
-        const arr = [...demoUserSeed]; 
-        arr[0].password_hash = await sha256Hex("Passw0rd!"); 
-        writeLS(STORAGE_KEYS.users, arr); 
-        setUsers(arr);
-      } 
-    })(); 
+    if (!users) { 
+      const arr = readLS(STORAGE_KEYS.users, []); 
+      setUsers(arr);
+    } 
   }, []);
 
   const login = async (email, password) => {
     const list = readLS(STORAGE_KEYS.users, []); 
     const hash = await sha256Hex(password);
-    const found = list.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password_hash === hash);
+    const found = list.find(u => 
+      u.username.toLowerCase() === email.toLowerCase() && 
+      u.password === hash && 
+      u.is_active
+    );
     
     if (found) { 
       const sess = { 
-        email: found.email, 
+        email: found.username, 
         role: found.role, 
         signedInAt: nowISO() 
       }; 

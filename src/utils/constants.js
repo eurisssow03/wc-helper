@@ -10,7 +10,7 @@ export const STORAGE_KEYS = {
   session: "wc_session",
 };
 
-export const PAGES = ["Dashboard", "Messages", "Homestay Data", "FAQ", "Chat Tester", "Settings", "Logs"];
+export const PAGES = ["Dashboard", "Messages", "Homestay Data", "FAQ", "Chat Tester", "User Management", "Settings", "Logs"];
 
 export const SYNONYMS = [
   ["check-in","入住","办理入住"],

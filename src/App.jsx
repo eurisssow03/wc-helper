@@ -18,6 +18,7 @@ import { FAQPage } from "./components/pages/FAQPage.jsx";
 
 // Import remaining components
 import { ChatTester } from "./components/pages/ChatTester.jsx";
+import { UserManagementPage } from "./components/pages/UserManagementPage.jsx";
 import { SettingsPage } from "./components/pages/SettingsPage.jsx";
 import { LogsPage } from "./components/pages/LogsPage.jsx";
 
@@ -101,6 +102,7 @@ function AppShell() {
           {active === "Homestay Data" && <HomestayData onSaved={() => show("Saved")} />}
           {active === "FAQ" && <FAQPage onSaved={() => show("Saved")} />}
           {active === "Chat Tester" && <ChatTester onLogged={() => show("Test Recorded")} />}
+          {active === "User Management" && <UserManagementPage onSaved={() => show("User Saved")} />}
           {active === "Settings" && <SettingsPage onSaved={() => show("Settings Saved")} />}
           {active === "Logs" && <LogsPage />}
         </div>
