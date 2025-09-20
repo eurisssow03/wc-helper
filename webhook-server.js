@@ -198,7 +198,7 @@ app.get('/webhook/whatsapp', (req, res) => {
 });
 
 // Webhook message handler
-app.post('/webhook/whatsapp', (req, res) => {
+app.post('/webhook/whatsapp', async (req, res) => {
   console.log('📨 Received webhook message:', JSON.stringify(req.body, null, 2));
   console.log('📨 Headers:', JSON.stringify(req.headers, null, 2));
   
@@ -212,10 +212,12 @@ app.post('/webhook/whatsapp', (req, res) => {
     if (body.object === 'whatsapp_business_account') {
       console.log('✅ Valid WhatsApp Business Account object');
       
-      body.entry.forEach((entry, entryIndex) => {
+      for (let entryIndex = 0; entryIndex < body.entry.length; entryIndex++) {
+        const entry = body.entry[entryIndex];
         console.log(`📨 Processing entry ${entryIndex}:`, entry.id);
         
-        entry.changes.forEach((change, changeIndex) => {
+        for (let changeIndex = 0; changeIndex < entry.changes.length; changeIndex++) {
+          const change = entry.changes[changeIndex];
           console.log(`📨 Processing change ${changeIndex}:`, change.field);
           
           if (change.field === 'messages') {
@@ -226,7 +228,10 @@ app.post('/webhook/whatsapp', (req, res) => {
             if (messages && messages.length > 0) {
               console.log(`📨 Found ${messages.length} incoming messages`);
               
-              messages.forEach((message, messageIndex) => {
+              // Process messages sequentially to handle async operations
+              for (let messageIndex = 0; messageIndex < messages.length; messageIndex++) {
+                const message = messages[messageIndex];
+                
                 console.log(`📱 Message ${messageIndex} details:`, {
                   from: message.from,
                   text: message.text?.body,
@@ -250,7 +255,7 @@ app.post('/webhook/whatsapp', (req, res) => {
                 } catch (error) {
                   console.error('❌ AI processing error:', error);
                 }
-              });
+              }
             } else {
               console.log('⚠️ No incoming messages found in change.value.messages');
             }
@@ -260,22 +265,23 @@ app.post('/webhook/whatsapp', (req, res) => {
             if (statuses && statuses.length > 0) {
               console.log(`📊 Found ${statuses.length} status updates`);
               
-              statuses.forEach((status, statusIndex) => {
+              for (let statusIndex = 0; statusIndex < statuses.length; statusIndex++) {
+                const status = statuses[statusIndex];
                 console.log(`📊 Status ${statusIndex}:`, {
                   messageId: status.id,
                   status: status.status,
                   recipient: status.recipient_id,
                   timestamp: status.timestamp
                 });
-              });
+              }
             } else {
               console.log('⚠️ No status updates found in change.value.statuses');
             }
           } else {
             console.log(`⚠️ Change field is not 'messages': ${change.field}`);
           }
-        });
-      });
+        }
+      }
     } else {
       console.log('❌ Invalid object type:', body.object);
     }
