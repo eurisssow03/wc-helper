@@ -177,7 +177,7 @@ async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = [
   return result;
 }
 
-module.exports = {
+export {
   processMessageWithAI,
   simpleSimilarityScore,
   getFallbackAnswer
