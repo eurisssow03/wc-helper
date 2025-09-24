@@ -38,7 +38,7 @@ export const defaultSettings = {
   fallbackReply: "Sorry, I couldn't understand your question. We will have someone contact you soon.",
   // AI settings
   answerMode: "AI", // AI or Simple
-  aiProvider: "LocalMock", // Options: OpenAI / Google / AzureOpenAI / LocalMock etc.
+  aiProvider: "OpenAI", // Options: OpenAI / Google / AzureOpenAI / LocalMock etc.
   embeddingModel: "text-embedding-3-small", // OpenAI embedding model
   chatModel: "gpt-3.5-turbo", // OpenAI chat model
   apiKeyEnc: "", // Base64 encrypted storage

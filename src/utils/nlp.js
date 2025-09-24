@@ -8,14 +8,6 @@ export function tokenize(text) {
     .split(/\s+/)
     .filter(Boolean);
   
-  // Debug logging for check-in questions
-  if (text && text.toLowerCase().includes('check')) {
-    console.log('Tokenize debug:', {
-      input: text,
-      output: result
-    });
-  }
-  
   return result;
 }
 
@@ -25,19 +17,6 @@ export function jaccardSimilarity(aTokens, bTokens) {
   const inter = [...a].filter(x => b.has(x)).length; 
   const union = new Set([...a, ...b]).size || 1;
   const score = inter / union; // 0~1
-  
-  // Debug logging for check-in questions
-  if (aTokens.some(token => token.includes('check')) || bTokens.some(token => token.includes('check'))) {
-    console.log('Jaccard similarity debug:', {
-      aTokens,
-      bTokens,
-      inter,
-      union,
-      score,
-      aSet: Array.from(a),
-      bSet: Array.from(b)
-    });
-  }
   
   return score;
 }

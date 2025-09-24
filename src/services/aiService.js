@@ -17,6 +17,9 @@ class AIService {
     this.apiKey = null;
     this.apiKeyLoaded = false;
     
+    console.log('🏗️ AIService: Constructor - FAQs:', this.faqs.length, 'Homestays:', this.homestays.length);
+    console.log('🏗️ AIService: Active FAQs:', this.getActiveFAQs().length);
+    
     // Ensure we have valid settings
     this.initializeSettings();
   }
@@ -24,7 +27,6 @@ class AIService {
   // Initialize settings with defaults if missing
   initializeSettings() {
     const defaultSettings = {
-      aiProvider: 'LocalMock',
       confidenceThreshold: 0.6,
       similarityThreshold: 0.3,
       alwaysOn: true
@@ -38,6 +40,12 @@ class AIService {
       }
     });
 
+    // Only set aiProvider to OpenAI if it's completely missing
+    if (!this.settings.aiProvider) {
+      this.settings.aiProvider = 'OpenAI';
+      settingsUpdated = true;
+    }
+
     if (settingsUpdated) {
       console.log('🔧 Initializing AI service with default settings');
       writeLS(STORAGE_KEYS.settings, this.settings);
@@ -49,6 +57,15 @@ class AIService {
     this.settings = readLS(STORAGE_KEYS.settings, {});
     this.faqs = readLS(STORAGE_KEYS.faqs, []);
     this.homestays = readLS(STORAGE_KEYS.homestays, []);
+    
+    console.log('🔄 AIService: Data refreshed - FAQs:', this.faqs.length, 'Homestays:', this.homestays.length);
+    console.log('🔄 AIService: Active FAQs:', this.getActiveFAQs().length);
+  }
+
+  // Force refresh data (public method)
+  forceRefresh() {
+    this.refreshData();
+    console.log('🔄 AIService: Force refresh completed');
   }
 
   // Load API key from backend
@@ -96,13 +113,14 @@ class AIService {
     const startTime = Date.now();
     
     console.log('🤖 AIService: Processing message:', userMessage);
+    
+    // Refresh data to get latest changes FIRST
+    this.refreshData();
+    
     console.log('🤖 AIService: Available FAQs:', this.faqs.length);
     console.log('🤖 AIService: Active FAQs:', this.getActiveFAQs().length);
     console.log('🤖 AIService: AI Provider:', this.settings.aiProvider);
     console.log('🤖 AIService: API Key loaded:', !!this.apiKey);
-    
-    // Refresh data to get latest changes
-    this.refreshData();
     
     // Load API key from backend if needed
     if (this.settings.aiProvider && this.settings.aiProvider !== 'LocalMock') {

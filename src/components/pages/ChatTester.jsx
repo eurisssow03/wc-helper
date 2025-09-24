@@ -28,6 +28,9 @@ export function ChatTester({ onLogged }) {
     
     setFaqs(currentFaqs);
     setHomestays(currentHomestays);
+    
+    // Force refresh AI service data
+    aiService.forceRefresh();
   }, []);
 
   // Refresh data periodically to catch updates
@@ -37,6 +40,9 @@ export function ChatTester({ onLogged }) {
       const currentHomestays = readLS(STORAGE_KEYS.homestays, []);
       setFaqs(currentFaqs);
       setHomestays(currentHomestays);
+      
+      // Force refresh AI service data
+      aiService.forceRefresh();
     }, 5000); // Refresh every 5 seconds
 
     return () => clearInterval(interval);
