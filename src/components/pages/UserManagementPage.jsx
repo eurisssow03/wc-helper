@@ -1,47 +1,42 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { readLS, writeLS, STORAGE_KEYS } from '../../services/storage.js';
-import { formatDateTime, nowISO, uuid } from '../../utils/helpers.js';
+import { formatDateTime, nowISO, uuid, sha256Hex } from '../../utils/helpers.js';
 import { baseStyles } from '../../utils/styles.js';
 import { Modal } from '../shared/Modal.jsx';
 import { Field } from '../shared/Field.jsx';
-
-// Simple password hashing function (in production, use bcrypt or similar)
-const hashPassword = (password) => {
-  // Simple hash for demo - in production use proper hashing
-  let hash = 0;
-  for (let i = 0; i < password.length; i++) {
-    const char = password.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  return hash.toString();
-};
 
 export function UserManagementPage({ onSaved }) {
   const session = readLS(STORAGE_KEYS.session, { email: "", role: "" });
   const [query, setQuery] = useState("");
   const [list, setList] = useState(() => {
     const users = readLS(STORAGE_KEYS.users, []);
-    // Initialize with default admin user if no users exist
-    if (users.length === 0) {
-      const defaultUsers = [
-        {
-          id: uuid(),
-          username: "admin@demo.com",
-          password: hashPassword("Passw0rd!"),
-          role: "admin",
-          is_active: true,
-          created_by: "system",
-          created_at: nowISO(),
-          updated_by: "system",
-          updated_at: nowISO()
-        }
-      ];
-      writeLS(STORAGE_KEYS.users, defaultUsers);
-      return defaultUsers;
-    }
     return users;
   });
+
+  // Initialize default admin user if no users exist
+  useEffect(() => {
+    const users = readLS(STORAGE_KEYS.users, []);
+    if (users.length === 0) {
+      // Create default user with SHA-256 hashed password
+      sha256Hex("Passw0rd!").then(hashedPassword => {
+        const defaultUsers = [
+          {
+            id: uuid(),
+            username: "admin@demo.com",
+            password: hashedPassword,
+            role: "admin",
+            is_active: true,
+            created_by: "system",
+            created_at: nowISO(),
+            updated_by: "system",
+            updated_at: nowISO()
+          }
+        ];
+        writeLS(STORAGE_KEYS.users, defaultUsers);
+        setList(defaultUsers);
+      });
+    }
+  }, []);
   const [editing, setEditing] = useState(null);
   const [showPassword, setShowPassword] = useState({});
 
@@ -99,9 +94,11 @@ export function UserManagementPage({ onSaved }) {
       return;
     }
 
+    // Hash password using SHA-256
+    const hashedPassword = await sha256Hex(editing.password);
     const payload = {
       ...editing,
-      password: hashPassword(editing.password),
+      password: hashedPassword,
       updated_by: session.email,
       updated_at: nowISO()
     };

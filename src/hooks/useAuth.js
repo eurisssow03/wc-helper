@@ -16,18 +16,19 @@ function writeLS(key, value) {
   localStorage.setItem(key, JSON.stringify(value)); 
 }
 
-function initOnce() {
+async function initOnce() {
   if (!localStorage.getItem(STORAGE_KEYS.settings)) writeLS(STORAGE_KEYS.settings, defaultSettings);
   if (!localStorage.getItem(STORAGE_KEYS.homestays)) writeLS(STORAGE_KEYS.homestays, []);
   if (!localStorage.getItem(STORAGE_KEYS.faqs)) writeLS(STORAGE_KEYS.faqs, []);
   if (!localStorage.getItem(STORAGE_KEYS.logs)) writeLS(STORAGE_KEYS.logs, []);
   if (!localStorage.getItem(STORAGE_KEYS.users)) {
-    // Initialize with default admin user
+    // Initialize with default admin user with SHA-256 hashed password
+    const hashedPassword = await sha256Hex("Passw0rd!");
     const defaultUsers = [
       {
         id: "admin-001",
         username: "admin@demo.com",
-        password: "Passw0rd!",
+        password: hashedPassword,
         role: "admin",
         is_active: true,
         created_by: "system",
