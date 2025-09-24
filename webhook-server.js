@@ -9,6 +9,22 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Initialize global storage with sample data
+function initializeGlobalStorage() {
+  // Initialize global storage if not already done
+  if (!global.faqs) {
+    global.faqs = [];
+  }
+  if (!global.homestays) {
+    global.homestays = [];
+  }
+  if (!global.whatsappMessages) {
+    global.whatsappMessages = [];
+  }
+  
+  console.log('📚 Global storage initialized');
+}
+
 // AI Processing Functions
 async function processMessageWithAI(userMessage, fromNumber) {
   console.log('🧠 Starting AI processing for:', userMessage);
@@ -548,13 +564,46 @@ app.get('/api/faqs', (req, res) => {
     res.json({
       success: true,
       faqs: activeFAQs,
-      total: activeFAQs.length
+      total: activeFAQs.length,
+      allFAQs: faqs.length,
+      activeCount: activeFAQs.length,
+      inactiveCount: faqs.length - activeFAQs.length
     });
   } catch (error) {
     console.error('❌ Error fetching FAQs:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch FAQ data'
+    });
+  }
+});
+
+// Debug endpoint to check current FAQ data
+app.get('/api/debug/faqs', (req, res) => {
+  try {
+    const faqs = global.faqs || [];
+    const activeFAQs = faqs.filter(faq => faq.is_active === true);
+    const inactiveFAQs = faqs.filter(faq => faq.is_active === false);
+    
+    res.json({
+      success: true,
+      total: faqs.length,
+      active: activeFAQs.length,
+      inactive: inactiveFAQs.length,
+      activeFAQs: activeFAQs.map(faq => ({
+        question: faq.question,
+        is_active: faq.is_active
+      })),
+      inactiveFAQs: inactiveFAQs.map(faq => ({
+        question: faq.question,
+        is_active: faq.is_active
+      }))
+    });
+  } catch (error) {
+    console.error('❌ Error fetching debug FAQ data:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch debug FAQ data'
     });
   }
 });
@@ -724,6 +773,9 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, () => {
+  // Initialize global storage
+  initializeGlobalStorage();
+  
   console.log('🚀 WhatsApp Webhook Server Started!');
   console.log(`📍 Port: ${PORT}`);
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
@@ -731,4 +783,5 @@ app.listen(PORT, () => {
   console.log(`❤️  Health check: http://localhost:${PORT}/health`);
   console.log(`🧪 Test endpoint: http://localhost:${PORT}/test`);
   console.log(`🔑 Verify Token: ${process.env.WEBHOOK_VERIFY_TOKEN || 'my_verify_token_123'}`);
+  console.log('📚 FAQ sync endpoint: http://localhost:3001/api/sync/faqs');
 });
