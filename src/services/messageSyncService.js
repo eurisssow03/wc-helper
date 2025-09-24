@@ -9,6 +9,31 @@ class MessageSyncService {
   constructor() {
     this.webhookUrl = process.env.REACT_APP_WEBHOOK_URL || 'http://localhost:3001';
     this.syncInterval = null;
+    this.serverAvailable = true;
+    this.lastCheck = 0;
+  }
+
+  // Check if webhook server is available
+  async checkServerAvailability() {
+    const now = Date.now();
+    // Only check every 30 seconds to avoid excessive requests
+    if (now - this.lastCheck < 30000) {
+      return this.serverAvailable;
+    }
+    
+    try {
+      const response = await fetch(`${this.webhookUrl}/api/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(3000) // 3 second timeout
+      });
+      this.serverAvailable = response.ok;
+      this.lastCheck = now;
+      return this.serverAvailable;
+    } catch (error) {
+      this.serverAvailable = false;
+      this.lastCheck = now;
+      return false;
+    }
   }
 
   // Start automatic syncing
@@ -17,8 +42,11 @@ class MessageSyncService {
       clearInterval(this.syncInterval);
     }
     
-    this.syncInterval = setInterval(() => {
-      this.syncMessagesToWebhook();
+    this.syncInterval = setInterval(async () => {
+      // Only sync if server is available
+      if (await this.checkServerAvailability()) {
+        this.syncMessagesToWebhook();
+      }
     }, intervalMs);
     
     console.log('📨 Message sync started (every', intervalMs, 'ms)');
@@ -35,8 +63,26 @@ class MessageSyncService {
 
   // Sync messages from webhook server to web app
   async syncMessagesFromWebhook() {
+    // Check if server is available first
+    if (!(await this.checkServerAvailability())) {
+      console.warn('🔌 Webhook server not available - skipping sync');
+      return [];
+    }
+    
     try {
-      const response = await fetch(`${this.webhookUrl}/api/messages?limit=100`);
+      const response = await fetch(`${this.webhookUrl}/api/messages?limit=100`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Add timeout to prevent hanging
+        signal: AbortSignal.timeout(5000) // 5 second timeout
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
       
       if (data.success && data.messages) {
@@ -55,7 +101,14 @@ class MessageSyncService {
         return newMessages;
       }
     } catch (error) {
-      console.error('❌ Error syncing messages from webhook:', error);
+      // Handle different types of errors gracefully
+      if (error.name === 'AbortError') {
+        console.warn('⏰ Webhook sync timeout - server may be slow or unavailable');
+      } else if (error.message.includes('Failed to fetch') || error.message.includes('ERR_CONNECTION_REFUSED')) {
+        console.warn('🔌 Webhook server not available - working in offline mode');
+      } else {
+        console.error('❌ Error syncing messages from webhook:', error);
+      }
     }
     return [];
   }
@@ -79,7 +132,11 @@ class MessageSyncService {
         }
       }
     } catch (error) {
-      console.error('❌ Error syncing messages to webhook:', error);
+      if (error.message.includes('Failed to fetch') || error.message.includes('ERR_CONNECTION_REFUSED')) {
+        console.warn('🔌 Webhook server not available - messages will sync when server is online');
+      } else {
+        console.error('❌ Error syncing messages to webhook:', error);
+      }
     }
   }
 
@@ -102,7 +159,11 @@ class MessageSyncService {
         }
       }
     } catch (error) {
-      console.error('❌ Error syncing logs to webhook:', error);
+      if (error.message.includes('Failed to fetch') || error.message.includes('ERR_CONNECTION_REFUSED')) {
+        console.warn('🔌 Webhook server not available - logs will sync when server is online');
+      } else {
+        console.error('❌ Error syncing logs to webhook:', error);
+      }
     }
   }
 
