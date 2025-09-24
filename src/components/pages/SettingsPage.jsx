@@ -296,71 +296,169 @@ export function SettingsPage({ onSaved }) {
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={baseStyles.label}>24/7 Operation Mode</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                type="checkbox"
-                checked={settings.alwaysOn}
-                onChange={(e) => handleChange('alwaysOn', e.target.checked)}
-                style={{ transform: 'scale(1.2)' }}
-              />
-              <span style={{ fontSize: 14, color: '#64748b' }}>
-                When enabled, AI will work 24/7, ignoring working hours below
-              </span>
+            <label style={baseStyles.label}>Operation Mode</label>
+            <div style={{ display: 'flex', gap: 16, marginBottom: 12 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="operationMode"
+                  value="normal"
+                  checked={!settings.alwaysOn}
+                  onChange={() => handleChange('alwaysOn', false)}
+                  style={{ transform: 'scale(1.2)' }}
+                />
+                <span style={{ fontSize: 14, color: '#64748b' }}>Normal Mode</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="operationMode"
+                  value="24/7"
+                  checked={settings.alwaysOn}
+                  onChange={() => handleChange('alwaysOn', true)}
+                  style={{ transform: 'scale(1.2)' }}
+                />
+                <span style={{ fontSize: 14, color: '#64748b' }}>24/7 Operation Mode</span>
+              </label>
+            </div>
+            <div style={{ fontSize: 12, color: '#64748b', padding: 8, backgroundColor: '#f8f9fa', borderRadius: 4 }}>
+              <strong>Normal Mode:</strong> Set specific working hours for each day of the week<br/>
+              <strong>24/7 Mode:</strong> AI will work continuously, ignoring daily working hours
             </div>
           </div>
 
           {!settings.alwaysOn && (
             <div style={{ marginBottom: 16 }}>
-              <label style={baseStyles.label}>Daily Working Hours</label>
-              <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
-                Set working hours for each day of the week. AI will only respond during these hours.
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <label style={baseStyles.label}>Daily Working Hours</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Set all days to 9:00-18:00 and enabled
+                      const newBusinessHours = { ...settings.businessHours };
+                      daysOfWeek.forEach(day => {
+                        newBusinessHours[day.key] = {
+                          start: '09:00',
+                          end: '18:00',
+                          enabled: true
+                        };
+                      });
+                      handleChange('businessHours', newBusinessHours);
+                    }}
+                    style={{
+                      ...baseStyles.btnGhost,
+                      fontSize: 12,
+                      padding: '6px 12px'
+                    }}
+                  >
+                    Set All 9-6
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Disable all days
+                      const newBusinessHours = { ...settings.businessHours };
+                      daysOfWeek.forEach(day => {
+                        newBusinessHours[day.key] = {
+                          ...newBusinessHours[day.key],
+                          enabled: false
+                        };
+                      });
+                      handleChange('businessHours', newBusinessHours);
+                    }}
+                    style={{
+                      ...baseStyles.btnGhost,
+                      fontSize: 12,
+                      padding: '6px 12px'
+                    }}
+                  >
+                    Disable All
+                  </button>
+                </div>
               </div>
               
-              {daysOfWeek.map((day) => (
-                <div key={day.key} style={{
+              <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>
+                Configure working hours for each day of the week. AI will only respond during enabled hours.
+              </div>
+              
+              <div style={{
+                display: 'grid',
+                gap: 8,
+                backgroundColor: '#f8f9fa',
+                padding: 16,
+                borderRadius: 8,
+                border: '1px solid #e9ecef'
+              }}>
+                {/* Header */}
+                <div style={{
                   display: 'grid',
                   gridTemplateColumns: '120px 1fr 1fr 80px',
                   gap: 12,
                   alignItems: 'center',
-                  marginBottom: 12,
-                  padding: 12,
-                  backgroundColor: '#f8f9fa',
-                  borderRadius: 6,
-                  border: '1px solid #e9ecef'
+                  padding: '8px 12px',
+                  backgroundColor: '#e9ecef',
+                  borderRadius: 4,
+                  fontWeight: 600,
+                  fontSize: 12,
+                  color: '#495057'
                 }}>
-                  <div style={{ fontWeight: 500, fontSize: 14 }}>
-                    {day.label}
-                  </div>
-                  
-                  <div>
-                    <label style={{ ...baseStyles.label, fontSize: 12, marginBottom: 4 }}>Start Time</label>
-                    <input
-                      type="time"
-                      value={settings.businessHours[day.key]?.start || '09:00'}
-                      onChange={(e) => handleNestedChange('businessHours', day.key, {
-                        ...settings.businessHours[day.key],
-                        start: e.target.value
-                      })}
-                      style={{ ...baseStyles.input, fontSize: 12, padding: '6px 8px' }}
-                    />
-                  </div>
-                  
-                  <div>
-                    <label style={{ ...baseStyles.label, fontSize: 12, marginBottom: 4 }}>End Time</label>
-                    <input
-                      type="time"
-                      value={settings.businessHours[day.key]?.end || '18:00'}
-                      onChange={(e) => handleNestedChange('businessHours', day.key, {
-                        ...settings.businessHours[day.key],
-                        end: e.target.value
-                      })}
-                      style={{ ...baseStyles.input, fontSize: 12, padding: '6px 8px' }}
-                    />
-                  </div>
-                  
-                  <div>
-                    <label style={{ ...baseStyles.label, fontSize: 12, marginBottom: 4 }}>Enabled</label>
+                  <div>Day</div>
+                  <div>Start Time</div>
+                  <div>End Time</div>
+                  <div style={{ textAlign: 'center' }}>Active</div>
+                </div>
+                
+                {/* Days */}
+                {daysOfWeek.map((day, index) => (
+                  <div key={day.key} style={{
+                    display: 'grid',
+                    gridTemplateColumns: '120px 1fr 1fr 80px',
+                    gap: 12,
+                    alignItems: 'center',
+                    padding: '12px',
+                    backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8f9fa',
+                    borderRadius: 4,
+                    border: '1px solid #e9ecef'
+                  }}>
+                    <div style={{ fontWeight: 500, fontSize: 14, color: '#495057' }}>
+                      {day.label}
+                    </div>
+                    
+                    <div>
+                      <input
+                        type="time"
+                        value={settings.businessHours[day.key]?.start || '09:00'}
+                        onChange={(e) => handleNestedChange('businessHours', day.key, {
+                          ...settings.businessHours[day.key],
+                          start: e.target.value
+                        })}
+                        style={{ 
+                          ...baseStyles.input, 
+                          fontSize: 13, 
+                          padding: '8px 10px',
+                          width: '100%'
+                        }}
+                      />
+                    </div>
+                    
+                    <div>
+                      <input
+                        type="time"
+                        value={settings.businessHours[day.key]?.end || '18:00'}
+                        onChange={(e) => handleNestedChange('businessHours', day.key, {
+                          ...settings.businessHours[day.key],
+                          end: e.target.value
+                        })}
+                        style={{ 
+                          ...baseStyles.input, 
+                          fontSize: 13, 
+                          padding: '8px 10px',
+                          width: '100%'
+                        }}
+                      />
+                    </div>
+                    
                     <div style={{ display: 'flex', justifyContent: 'center' }}>
                       <input
                         type="checkbox"
@@ -369,33 +467,63 @@ export function SettingsPage({ onSaved }) {
                           ...settings.businessHours[day.key],
                           enabled: e.target.checked
                         })}
-                        style={{ transform: 'scale(1.2)' }}
+                        style={{ transform: 'scale(1.3)' }}
                       />
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
 
           <div style={{ 
-            padding: 12, 
-            backgroundColor: '#f8f9fa', 
+            padding: 16, 
+            backgroundColor: settings.alwaysOn ? '#e8f5e8' : '#f0f9ff', 
             borderRadius: 8, 
             fontSize: 14, 
-            color: '#6c757d' 
+            color: '#495057',
+            border: `1px solid ${settings.alwaysOn ? '#4caf50' : '#0ea5e9'}`
           }}>
-            <strong>Current Timezone:</strong> {TZ}<br/>
-            <strong>24/7 Mode:</strong> {settings.alwaysOn ? 'Enabled' : 'Disabled'}<br/>
-            {!settings.alwaysOn && (
-              <>
-                <strong>Working Days:</strong> {
-                  daysOfWeek
-                    .filter(day => settings.businessHours[day.key]?.enabled !== false)
-                    .map(day => day.label)
-                    .join(', ') || 'None configured'
-                }
-              </>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 16 }}>
+                {settings.alwaysOn ? '🕒' : '⏰'}
+              </span>
+              <strong style={{ color: settings.alwaysOn ? '#2e7d32' : '#0369a1' }}>
+                {settings.alwaysOn ? '24/7 Operation Mode' : 'Normal Mode'}
+              </strong>
+            </div>
+            
+            <div style={{ fontSize: 12, color: '#6c757d', marginBottom: 8 }}>
+              <strong>Timezone:</strong> {TZ}
+            </div>
+            
+            {settings.alwaysOn ? (
+              <div style={{ fontSize: 12, color: '#2e7d32' }}>
+                AI is active 24 hours a day, 7 days a week
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: 12, color: '#6c757d', marginBottom: 4 }}>
+                  <strong>Active Days:</strong> {
+                    daysOfWeek
+                      .filter(day => settings.businessHours[day.key]?.enabled !== false)
+                      .map(day => day.label)
+                      .join(', ') || 'None configured'
+                  }
+                </div>
+                {daysOfWeek
+                  .filter(day => settings.businessHours[day.key]?.enabled !== false)
+                  .length > 0 && (
+                  <div style={{ fontSize: 11, color: '#6c757d' }}>
+                    <strong>Hours:</strong> {
+                      daysOfWeek
+                        .filter(day => settings.businessHours[day.key]?.enabled !== false)
+                        .map(day => `${day.label}: ${settings.businessHours[day.key]?.start || '09:00'}-${settings.businessHours[day.key]?.end || '18:00'}`)
+                        .join(', ')
+                    }
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
