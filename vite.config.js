@@ -14,7 +14,7 @@ export default defineConfig({
     ],
     proxy: {
       '/webhook/whatsapp': {
-        target: 'http://localhost:3001',
+        target: process.env.VITE_WEBHOOK_URL || 'http://localhost:3001',
         changeOrigin: true,
         secure: false
       }

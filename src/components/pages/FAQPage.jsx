@@ -45,7 +45,7 @@ export function FAQPage({ onSaved }) {
   // Sync FAQ data with webhook server
   const syncWithWebhook = async (faqData) => {
     try {
-      const webhookUrl = process.env.REACT_APP_WEBHOOK_URL || 'http://localhost:3001';
+      const webhookUrl = process.env.REACT_APP_WEBHOOK_URL || 'https://wc-helper.onrender.com';
       const response = await fetch(`${webhookUrl}/api/sync/faqs`, {
         method: 'POST',
         headers: {

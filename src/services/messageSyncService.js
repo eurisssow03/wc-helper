@@ -7,7 +7,7 @@ import { readLS, writeLS, STORAGE_KEYS } from './storage.js';
 
 class MessageSyncService {
   constructor() {
-    this.webhookUrl = process.env.REACT_APP_WEBHOOK_URL || 'http://localhost:3001';
+    this.webhookUrl = process.env.REACT_APP_WEBHOOK_URL || 'https://wc-helper.onrender.com';
     this.syncInterval = null;
     this.serverAvailable = true;
     this.lastCheck = 0;

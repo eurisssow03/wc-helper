@@ -716,5 +716,5 @@ app.listen(PORT, () => {
   console.log(`❤️  Health check: http://localhost:${PORT}/health`);
   console.log(`🧪 Test endpoint: http://localhost:${PORT}/test`);
   console.log(`🔑 Verify Token: ${WEBHOOK_VERIFY_TOKEN}`);
-  console.log('📚 FAQ sync endpoint: http://localhost:3001/api/sync/faqs');
+  console.log('📚 FAQ sync endpoint: https://wc-helper.onrender.com/api/sync/faqs');
 });
