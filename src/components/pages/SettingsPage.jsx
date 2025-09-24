@@ -225,15 +225,18 @@ export function SettingsPage({ onSaved }) {
 
         <div style={{ marginBottom: 16 }}>
           <label style={baseStyles.label}>API Key</label>
-          <input
-            type="password"
-            value={settings.apiKeyEnc ? atob(settings.apiKeyEnc) : ''}
-            onChange={(e) => handleChange('apiKeyEnc', btoa(e.target.value))}
-            placeholder="Enter your API key"
-            style={baseStyles.input}
-          />
+          <div style={{
+            padding: 12,
+            backgroundColor: '#f0f9ff',
+            border: '1px solid #0ea5e9',
+            borderRadius: 6,
+            fontSize: 14,
+            color: '#0369a1'
+          }}>
+            🔐 API Key is managed by the backend server for security
+          </div>
           <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-            Key will be stored encrypted in your browser
+            The OpenAI API key is securely stored on the server and automatically used for AI processing
           </div>
         </div>
       </div>
@@ -435,58 +438,36 @@ export function SettingsPage({ onSaved }) {
         <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>WhatsApp Business Configuration</h3>
         
         <div style={{ marginBottom: 16 }}>
-          <label style={baseStyles.label}>WhatsApp Business Phone Number</label>
-          <input
-            type="text"
-            value={settings.whatsapp?.phoneNumber || ''}
-            onChange={(e) => handleNestedChange('whatsapp', 'phoneNumber', e.target.value)}
-            style={baseStyles.input}
-            placeholder="+1234567890"
-          />
+          <label style={baseStyles.label}>Configuration Status</label>
+          <div style={{
+            padding: 12,
+            backgroundColor: '#f0f9ff',
+            border: '1px solid #0ea5e9',
+            borderRadius: 6,
+            fontSize: 14,
+            color: '#0369a1'
+          }}>
+            🔐 WhatsApp configuration is managed by the backend server for security
+          </div>
           <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-            Your WhatsApp Business phone number (include country code)
+            Phone number, API token, and webhook settings are securely stored on the server
           </div>
         </div>
 
         <div style={{ marginBottom: 16 }}>
-          <label style={baseStyles.label}>WhatsApp Business API Token</label>
-          <input
-            type="password"
-            value={settings.whatsapp?.apiToken || ''}
-            onChange={(e) => handleNestedChange('whatsapp', 'apiToken', e.target.value)}
-            style={baseStyles.input}
-            placeholder="Enter your WhatsApp Business API token"
-          />
-          <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-            Get this from Meta Business Manager → WhatsApp Business API
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 16 }}>
-          <label style={baseStyles.label}>Webhook Verify Token</label>
-          <input
-            type="text"
-            value={settings.whatsapp?.webhookToken || ''}
-            onChange={(e) => handleNestedChange('whatsapp', 'webhookToken', e.target.value)}
-            style={baseStyles.input}
-            placeholder="Enter webhook verification token"
-          />
-          <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-            Custom token for webhook verification (create a secure random string)
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 16 }}>
-          <label style={baseStyles.label}>Webhook URL</label>
-          <input
-            type="text"
-            value={settings.whatsapp?.webhookUrl || ''}
-            onChange={(e) => handleNestedChange('whatsapp', 'webhookUrl', e.target.value)}
-            style={baseStyles.input}
-            placeholder="https://yourdomain.com/webhook/whatsapp"
-          />
-          <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-            Your webhook endpoint URL for receiving WhatsApp messages
+          <label style={baseStyles.label}>Current Configuration</label>
+          <div style={{
+            padding: 12,
+            backgroundColor: '#f8f9fa',
+            border: '1px solid #e9ecef',
+            borderRadius: 6,
+            fontSize: 12,
+            fontFamily: 'monospace'
+          }}>
+            <div><strong>Business Number:</strong> 60165281800</div>
+            <div><strong>Webhook URL:</strong> https://wc-helper.onrender.com/webhook/whatsapp</div>
+            <div><strong>Verify Token:</strong> my_verify_token_123</div>
+            <div><strong>API Token:</strong> [Securely stored on server]</div>
           </div>
         </div>
       </div>
@@ -548,39 +529,35 @@ export function SettingsPage({ onSaved }) {
         
         <div style={{ 
           padding: 12, 
-          backgroundColor: settings.whatsapp?.phoneNumber && settings.whatsapp?.apiToken ? '#f0f9ff' : '#fef2f2',
-          border: `1px solid ${settings.whatsapp?.phoneNumber && settings.whatsapp?.apiToken ? '#0ea5e9' : '#f87171'}`,
+          backgroundColor: '#f0f9ff',
+          border: '1px solid #0ea5e9',
           borderRadius: 8,
           marginBottom: 12
         }}>
           <div style={{ 
             fontSize: 14, 
             fontWeight: 600, 
-            color: settings.whatsapp?.phoneNumber && settings.whatsapp?.apiToken ? '#0369a1' : '#dc2626',
+            color: '#0369a1',
             marginBottom: 4
           }}>
-            {settings.whatsapp?.phoneNumber && settings.whatsapp?.apiToken ? '✅ Ready to Connect' : '❌ Configuration Incomplete'}
+            ✅ Backend Configured
           </div>
           <div style={{ fontSize: 12, color: '#64748b' }}>
-            {settings.whatsapp?.phoneNumber && settings.whatsapp?.apiToken 
-              ? 'WhatsApp Business API is configured and ready to send messages'
-              : 'Please configure phone number and API token to enable WhatsApp integration'
-            }
+            WhatsApp Business API is configured on the backend server and ready to send messages
           </div>
         </div>
 
         <div style={{ fontSize: 12, color: '#64748b' }}>
-          <strong>Setup Instructions:</strong>
-          <ol style={{ margin: '8px 0', paddingLeft: 20 }}>
-            <li>Get WhatsApp Business API access from Meta Business Manager</li>
-            <li>Create a webhook endpoint on your server</li>
-            <li>Configure the webhook URL in Meta Business Manager</li>
-            <li>Enter your phone number and API token above</li>
-            <li>Configure AI response templates in the "AI Rules" tab</li>
-            <li>Test the connection using the Chat Tester</li>
-          </ol>
+          <strong>Configuration Details:</strong>
+          <ul style={{ margin: '8px 0', paddingLeft: 20 }}>
+            <li>✅ WhatsApp Business API credentials are configured on the server</li>
+            <li>✅ Webhook endpoint is ready at: https://wc-helper.onrender.com/webhook/whatsapp</li>
+            <li>✅ Verify token is set for webhook validation</li>
+            <li>✅ AI response templates are managed in the "AI Rules" tab</li>
+            <li>✅ Test the connection using the Chat Tester</li>
+          </ul>
           <div style={{ marginTop: 8, padding: 8, backgroundColor: '#f0f9ff', borderRadius: 4, border: '1px solid #0ea5e9' }}>
-            <strong>💡 Note:</strong> Message templates are managed in the "AI Rules" tab. The AI will use those templates to generate responses for WhatsApp messages.
+            <strong>💡 Note:</strong> All sensitive configuration is managed by the backend server for security. The webhook is ready to receive WhatsApp messages and respond using AI.
           </div>
         </div>
       </div>

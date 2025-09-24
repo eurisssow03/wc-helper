@@ -14,6 +14,8 @@ class AIService {
     this.settings = readLS(STORAGE_KEYS.settings, {});
     this.faqs = readLS(STORAGE_KEYS.faqs, []);
     this.homestays = readLS(STORAGE_KEYS.homestays, []);
+    this.apiKey = null;
+    this.apiKeyLoaded = false;
   }
 
   // Update data from localStorage
@@ -21,6 +23,31 @@ class AIService {
     this.settings = readLS(STORAGE_KEYS.settings, {});
     this.faqs = readLS(STORAGE_KEYS.faqs, []);
     this.homestays = readLS(STORAGE_KEYS.homestays, []);
+  }
+
+  // Load API key from backend
+  async loadApiKey() {
+    if (this.apiKeyLoaded) {
+      return this.apiKey;
+    }
+
+    try {
+      const response = await fetch('/api/config/openai-key');
+      const data = await response.json();
+      
+      if (data.success && data.apiKey) {
+        this.apiKey = data.apiKey;
+        this.apiKeyLoaded = true;
+        console.log('🤖 OpenAI API key loaded from backend');
+        return this.apiKey;
+      } else {
+        console.error('❌ Failed to load OpenAI API key from backend');
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Error loading OpenAI API key:', error);
+      return null;
+    }
   }
 
   // Get active FAQs only
@@ -38,6 +65,11 @@ class AIService {
     
     // Refresh data to get latest changes
     this.refreshData();
+    
+    // Load API key from backend if needed
+    if (this.settings.aiProvider && this.settings.aiProvider !== 'LocalMock') {
+      await this.loadApiKey();
+    }
     
     const activeFAQs = this.getActiveFAQs();
     let candidates = [];
@@ -180,6 +212,7 @@ class AIService {
       try {
         answer = await callChatModel({
           settings: this.settings,
+          apiKey: this.apiKey,
           systemPrompt: "You are a professional homestay customer service assistant. Please answer customer questions based on the provided FAQ information. FAQ information takes TOP PRIORITY. Only use homestay data to supplement FAQ answers when relevant. If no FAQ matches, provide general homestay information. Always prioritize FAQ knowledge over general homestay data.",
           contextItems,
           userMessage,

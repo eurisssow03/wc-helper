@@ -182,14 +182,13 @@ export function rerankWithSignals({query, homestays, candidates}){
   return out.slice(0,3);
 }
 
-export async function callChatModel({ settings, systemPrompt, contextItems, userMessage, homestays = [] }){
+export async function callChatModel({ settings, apiKey, systemPrompt, contextItems, userMessage, homestays = [] }){
   // Language detection and AI rules
   const languageDetection = detectLanguageWithConfidence(userMessage);
   const responseLanguage = getResponseLanguage(userMessage, settings.aiRules);
   const aiRules = settings.aiRules || {};
   
   try {
-      const apiKey = settings.apiKeyEnc ? atob(settings.apiKeyEnc) : '';
       if (!apiKey) {
         throw new Error('OpenAI API key is required');
       }

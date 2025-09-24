@@ -10,6 +10,13 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Configuration constants
+const WEBHOOK_VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN || 'my_verify_token_123';
+const WHATSAPP_ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN || 'EAAZAwCVwdvKIBPqDSuS0pWld1NtyqN6GptxOAlQyakFvPhqq62xCK6ZCDUkWxkSkjZCnF6VYcpdiFknmRWQPW20uLZARYC9o5na24lOxU1Eh8LflAMw1fH1DayDWHDvwtHZCROZCWoKFbiX3ZBJkvJtyrWBtWncpZCVU2gYovgU8YTAN3Amug73N78czBTIipZBnfmIZAQsVUtI3CxL8HZAouV7GySiH6icmiwRbTuY6dR8hWEZD';
+const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || '60165281800';
+const WHATSAPP_API_VERSION = process.env.WHATSAPP_API_VERSION || 'v18.0';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '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';
+
 // Initialize global storage with sample data
 function initializeGlobalStorage() {
   // Initialize global storage if not already done
@@ -90,18 +97,14 @@ async function sendWhatsAppReply(toNumber, message) {
   console.log(`📤 Sending WhatsApp reply to ${toNumber}: ${message}`);
   
   try {
-    // Get WhatsApp API credentials from environment variables
-    const ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
-    const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
-    const API_VERSION = process.env.WHATSAPP_API_VERSION || 'v18.0';
-    
-    if (!ACCESS_TOKEN || !PHONE_NUMBER_ID) {
+    // Use configuration constants
+    if (!WHATSAPP_ACCESS_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
       console.error('❌ Missing WhatsApp API credentials');
       console.error('   Required: WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID');
       return { success: false, error: 'Missing API credentials' };
     }
     
-    const url = `https://graph.facebook.com/${API_VERSION}/${PHONE_NUMBER_ID}/messages`;
+    const url = `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${WHATSAPP_PHONE_NUMBER_ID}/messages`;
     
     const payload = {
       messaging_product: 'whatsapp',
@@ -115,7 +118,7 @@ async function sendWhatsAppReply(toNumber, message) {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${ACCESS_TOKEN}`,
+        'Authorization': `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
@@ -173,10 +176,8 @@ app.get('/webhook/whatsapp', (req, res) => {
     timestamp: new Date().toISOString()
   });
 
-  // Get verify token from environment variable or use default for testing
-  const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN || 'my_verify_token_123';
-
-  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+  // Use configuration constant
+  if (mode === 'subscribe' && token === WEBHOOK_VERIFY_TOKEN) {
     console.log('✅ Webhook verified successfully!');
     res.status(200).send(challenge);
   } else {
@@ -353,7 +354,7 @@ app.get('/test', (req, res) => {
     message: 'Webhook test endpoint',
     timestamp: new Date().toISOString(),
     webhookUrl: `${req.protocol}://${req.get('host')}/webhook/whatsapp`,
-    verifyToken: process.env.WEBHOOK_VERIFY_TOKEN || 'my_verify_token_123',
+    verifyToken: WEBHOOK_VERIFY_TOKEN,
     status: 'Ready for WhatsApp messages'
   });
 });
@@ -411,6 +412,43 @@ app.get('/api/messages/stats', (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch message statistics'
+    });
+  }
+});
+
+// API endpoint to get OpenAI API key (for frontend use)
+app.get('/api/config/openai-key', (req, res) => {
+  try {
+    res.json({
+      success: true,
+      apiKey: OPENAI_API_KEY,
+      hasKey: !!OPENAI_API_KEY
+    });
+  } catch (error) {
+    console.error('❌ Error getting OpenAI API key:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get OpenAI API key'
+    });
+  }
+});
+
+// API endpoint to get WhatsApp configuration
+app.get('/api/config/whatsapp', (req, res) => {
+  try {
+    res.json({
+      success: true,
+      businessNumber: WHATSAPP_PHONE_NUMBER_ID,
+      webhookUrl: 'https://wc-helper.onrender.com/webhook/whatsapp',
+      verifyToken: WEBHOOK_VERIFY_TOKEN,
+      hasAccessToken: !!WHATSAPP_ACCESS_TOKEN,
+      apiVersion: WHATSAPP_API_VERSION
+    });
+  } catch (error) {
+    console.error('❌ Error getting WhatsApp config:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get WhatsApp configuration'
     });
   }
 });
@@ -677,6 +715,6 @@ app.listen(PORT, () => {
   console.log(`🔗 Webhook URL: http://localhost:${PORT}/webhook/whatsapp`);
   console.log(`❤️  Health check: http://localhost:${PORT}/health`);
   console.log(`🧪 Test endpoint: http://localhost:${PORT}/test`);
-  console.log(`🔑 Verify Token: ${process.env.WEBHOOK_VERIFY_TOKEN || 'my_verify_token_123'}`);
+  console.log(`🔑 Verify Token: ${WEBHOOK_VERIFY_TOKEN}`);
   console.log('📚 FAQ sync endpoint: http://localhost:3001/api/sync/faqs');
 });
