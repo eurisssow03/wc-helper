@@ -23,7 +23,18 @@ export const SYNONYMS = [
 
 export const defaultSettings = {
   alwaysOn: true, // 24/7 operation
-  businessHours: { tz: TZ, start: "09:00", end: "18:00" },
+  businessHours: { 
+    tz: TZ, 
+    start: "09:00", 
+    end: "18:00",
+    monday: { start: "09:00", end: "18:00", enabled: true },
+    tuesday: { start: "09:00", end: "18:00", enabled: true },
+    wednesday: { start: "09:00", end: "18:00", enabled: true },
+    thursday: { start: "09:00", end: "18:00", enabled: true },
+    friday: { start: "09:00", end: "18:00", enabled: true },
+    saturday: { start: "09:00", end: "18:00", enabled: true },
+    sunday: { start: "09:00", end: "18:00", enabled: true }
+  },
   fallbackReply: "Sorry, I couldn't understand your question. We will have someone contact you soon.",
   // AI settings
   answerMode: "AI", // AI or Simple

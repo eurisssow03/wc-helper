@@ -10,6 +10,8 @@ export function SettingsPage({ onSaved }) {
 
   useEffect(() => {
     const savedSettings = readLS(STORAGE_KEYS.settings, defaultSettings);
+    console.log('🔧 SettingsPage: Loading settings:', savedSettings);
+    console.log('🔧 SettingsPage: Default settings:', defaultSettings);
     setSettings(savedSettings);
   }, []);
 
@@ -265,6 +267,10 @@ export function SettingsPage({ onSaved }) {
   );
 
   const renderBusinessSettings = () => {
+    console.log('🔧 SettingsPage: Rendering business settings');
+    console.log('🔧 SettingsPage: Current settings:', settings);
+    console.log('🔧 SettingsPage: Business hours:', settings.businessHours);
+    
     const daysOfWeek = [
       { key: 'monday', label: 'Monday' },
       { key: 'tuesday', label: 'Tuesday' },
@@ -843,12 +849,29 @@ export function SettingsPage({ onSaved }) {
   );
 
   const renderTabContent = () => {
-    switch (activeTab) {
-      case 'business': return renderBusinessSettings();
-      case 'ai': return renderAISettings();
-      case 'ai_rules': return renderAIRulesSettings();
-      case 'whatsapp': return renderWhatsAppSettings();
-      default: return renderBusinessSettings();
+    try {
+      switch (activeTab) {
+        case 'business': return renderBusinessSettings();
+        case 'ai': return renderAISettings();
+        case 'ai_rules': return renderAIRulesSettings();
+        case 'whatsapp': return renderWhatsAppSettings();
+        default: return renderBusinessSettings();
+      }
+    } catch (error) {
+      console.error('❌ Error rendering tab content:', error);
+      return (
+        <div style={baseStyles.card}>
+          <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600, color: '#dc2626' }}>
+            Error Loading Settings
+          </h3>
+          <p style={{ color: '#6b7280', margin: 0 }}>
+            There was an error loading the settings page. Please refresh the page and try again.
+          </p>
+          <p style={{ color: '#6b7280', margin: '8px 0 0 0', fontSize: 12 }}>
+            Error: {error.message}
+          </p>
+        </div>
+      );
     }
   };
 
