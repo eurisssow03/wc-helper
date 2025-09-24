@@ -157,10 +157,25 @@ export function homestayCityBoost(query, faq, homestays){
 export function rerankWithSignals({query, homestays, candidates}){
   // candidates: [{faq, sim}]  sim=vector similarity
   const out = candidates.map(c=>{
-    const s1 = c.sim; // 70%
+    const s1 = c.sim; // Base similarity score
     const hb = homestayCityBoost(query, c.faq, homestays); // max 0.2
-    const sb = synonymBoost(query, [c.faq.question, c.faq.answer, (c.faq.tags||[]).join(" ")].join(" ")).score; // max 0.2 but we count 10%
-    const final = 0.7*s1 + 0.2*hb.score + 0.1*sb;
+    const sb = synonymBoost(query, [c.faq.question, c.faq.answer, (c.faq.tags||[]).join(" ")].join(" ")).score; // max 0.2
+    
+    // If we have a perfect match (1.0), keep it as 1.0
+    let final;
+    if (s1 >= 1.0) {
+      final = 1.0;
+    } else if (s1 >= 0.8) {
+      // High confidence matches get minimal reduction
+      final = s1 + 0.1 * hb.score + 0.05 * sb;
+    } else {
+      // Lower confidence matches get the full weighted formula
+      final = 0.7*s1 + 0.2*hb.score + 0.1*sb;
+    }
+    
+    // Ensure final score doesn't exceed 1.0
+    final = Math.min(final, 1.0);
+    
     return { ...c, final, _signals: { homestayCity: hb, synonymScore: sb } };
   });
   out.sort((a,b)=>b.final-a.final);

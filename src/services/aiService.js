@@ -134,29 +134,33 @@ class AIService {
 
     let answer;
     
+    // Get confidence threshold from settings
+    const confidenceThreshold = this.settings.confidenceThreshold || 0.6;
+    console.log('🤖 Using confidence threshold:', confidenceThreshold);
+    
     // Use chat model if available and confidence is high enough
-    if (this.settings.aiProvider && this.settings.aiProvider !== 'LocalMock' && confidence > 0.3) {
+    if (this.settings.aiProvider && this.settings.aiProvider !== 'LocalMock' && confidence > confidenceThreshold) {
       try {
         answer = await callChatModel({
           settings: this.settings,
-          systemPrompt: "You are a professional homestay customer service assistant. Please answer customer questions based on the provided FAQ information and available homestay data. Always provide homestay-specific information when relevant, even for general questions. If the user asks about check-in times, amenities, or other general topics, provide information for all available homestays.",
+          systemPrompt: "You are a professional homestay customer service assistant. Please answer customer questions based on the provided FAQ information. FAQ information takes TOP PRIORITY. Only use homestay data to supplement FAQ answers when relevant. If no FAQ matches, provide general homestay information. Always prioritize FAQ knowledge over general homestay data.",
           contextItems,
           userMessage,
           homestays: this.homestays
         });
-        console.log('🤖 Chat model response generated');
+        console.log('🤖 Chat model response generated (confidence > threshold)');
       } catch (error) {
         console.error('🤖 Chat model error:', error);
         answer = this.getFallbackAnswer(userMessage, contextItems);
       }
     } else {
-      // Use simple answer or fallback
-      if (bestMatch && confidence > 0.5) {
+      // Use simple answer or fallback based on confidence threshold
+      if (bestMatch && confidence > confidenceThreshold) {
         answer = bestMatch.faq.answer;
-        console.log('🤖 Using FAQ answer');
+        console.log('🤖 Using FAQ answer (confidence > threshold)');
       } else {
         answer = this.getFallbackAnswer(userMessage, contextItems);
-        console.log('🤖 Using fallback answer');
+        console.log('🤖 Using fallback answer (confidence < threshold)');
       }
     }
 

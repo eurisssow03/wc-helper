@@ -261,7 +261,8 @@ app.post('/webhook/whatsapp', async (req, res) => {
                     confidence: response.confidence,
                     matchedQuestion: response.matchedQuestion,
                     processingTime: response.processingTime,
-                    status: 'processed'
+                    status: 'processed',
+                    source: 'webhook'
                   });
                   
                   // Send WhatsApp reply
@@ -285,7 +286,8 @@ app.post('/webhook/whatsapp', async (req, res) => {
                     confidence: 0,
                     matchedQuestion: null,
                     processingTime: 0,
-                    status: 'error'
+                    status: 'error',
+                    source: 'webhook'
                   });
                 }
               }

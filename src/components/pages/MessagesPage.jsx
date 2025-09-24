@@ -11,15 +11,12 @@ export function MessagesPage() {
   const [filter, setFilter] = useState('all'); // all, processed, error
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Fetch messages from unified source
-  const fetchMessages = async () => {
+  // Fetch messages from localStorage (fast)
+  const fetchMessages = () => {
     try {
       setLoading(true);
       
-      // First try to sync from webhook server
-      await messageSyncService.syncMessagesFromWebhook();
-      
-      // Then get messages from localStorage
+      // Get messages from localStorage (fast)
       const localMessages = messageSyncService.getMessages();
       setMessages(localMessages);
       
@@ -47,16 +44,31 @@ export function MessagesPage() {
     }
   };
 
+  // Sync messages from webhook server (background)
+  const syncMessages = async () => {
+    try {
+      await messageSyncService.syncMessagesFromWebhook();
+      // Refresh local data after sync
+      fetchMessages();
+    } catch (err) {
+      console.error('Error syncing messages:', err);
+    }
+  };
+
   // Load data on component mount
   useEffect(() => {
+    // Load messages immediately (fast)
     fetchMessages();
+    
+    // Sync from webhook in background (slow)
+    syncMessages();
     
     // Start auto-sync
     messageSyncService.startAutoSync(30000);
     
     // Refresh every 30 seconds
     const interval = setInterval(() => {
-      fetchMessages();
+      syncMessages();
     }, 30000);
     
     return () => {
