@@ -177,14 +177,19 @@ function getFallbackAnswer(userMessage, responseTemplates = null) {
 
 // Main processing function (matching web app logic)
 async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = []) {
-  console.log('🤖 Webhook AI: Processing message:', userMessage);
-  console.log('🤖 Webhook AI: Available FAQs:', faqs.length);
+  console.log('🚀 ===== WEBHOOK AI PROCESSING STARTED =====');
+  console.log('📝 Input Message:', `"${userMessage}"`);
+  console.log('📞 From Number:', fromNumber);
+  console.log('⏰ Start Time:', new Date().toISOString());
+  console.log('📊 Data Status:');
+  console.log('  📚 Total FAQs:', faqs.length);
+  console.log('  🏨 Homestays:', homestays.length);
   
   const startTime = Date.now();
   
   // Filter only active FAQs
   const activeFAQs = faqs.filter(faq => faq.is_active === true);
-  console.log('🤖 Webhook AI: Active FAQs:', activeFAQs.length);
+  console.log('  ✅ Active FAQs:', activeFAQs.length);
   
   if (activeFAQs.length === 0) {
     console.log('🤖 Webhook AI: No active FAQs, using fallback');
@@ -275,13 +280,22 @@ async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = [
     }
   };
 
-  console.log('🤖 Webhook AI: Final result:', {
-    answer: answer.substring(0, 100) + '...',
-    confidence,
-    matchedQuestion,
-    processingTime,
-    finalDecision: result.processingDetails.finalDecision
+  const totalProcessingTime = Date.now() - startTime;
+  
+  console.log('🏁 ===== WEBHOOK AI PROCESSING COMPLETED =====');
+  console.log('  ⏱️ Total Processing Time:', totalProcessingTime + 'ms');
+  console.log('  📊 Final Confidence:', confidence.toFixed(4));
+  console.log('  📝 Answer Length:', answer.length + ' characters');
+  console.log('  🔍 Match Method:', bestMatch?.matchMethod || 'unknown');
+  console.log('  ✅ Result Summary:', {
+    hasAnswer: !!answer,
+    hasMatch: !!matchedQuestion,
+    confidence: confidence.toFixed(4),
+    processingTime: totalProcessingTime + 'ms',
+    answerPreview: answer.substring(0, 100) + (answer.length > 100 ? '...' : ''),
+    finalDecision: result.processingDetails?.finalDecision || 'unknown'
   });
+  console.log('==========================================');
 
   return result;
 }

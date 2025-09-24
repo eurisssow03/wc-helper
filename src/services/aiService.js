@@ -135,15 +135,24 @@ class AIService {
   async processMessage(userMessage, options = {}) {
     const startTime = Date.now();
     
-    console.log('🤖 AIService: Processing message:', userMessage);
+    console.log('🚀 ===== AI PROCESSING STARTED =====');
+    console.log('📝 Input Message:', `"${userMessage}"`);
+    console.log('⏰ Start Time:', new Date().toISOString());
     
     // Refresh data to get latest changes FIRST
     this.refreshData();
     
-    console.log('🤖 AIService: Available FAQs:', this.faqs.length);
-    console.log('🤖 AIService: Active FAQs:', this.getActiveFAQs().length);
-    console.log('🤖 AIService: AI Provider:', this.settings.aiProvider);
-    console.log('🤖 AIService: API Key loaded:', !!this.apiKey);
+    console.log('📊 Data Status:');
+    console.log('  📚 Total FAQs:', this.faqs.length);
+    console.log('  ✅ Active FAQs:', this.getActiveFAQs().length);
+    console.log('  🏨 Homestays:', this.homestays.length);
+    console.log('  🤖 AI Provider:', this.settings.aiProvider);
+    console.log('  🔑 API Key loaded:', !!this.apiKey);
+    console.log('  ⚙️ Settings:', {
+      confidenceThreshold: this.settings.confidenceThreshold,
+      similarityThreshold: this.settings.similarityThreshold,
+      aiProvider: this.settings.aiProvider
+    });
     
     // Load API key from backend if needed
     if (this.settings.aiProvider && this.settings.aiProvider !== 'LocalMock') {
@@ -159,9 +168,10 @@ class AIService {
     }
     
     // Log final AI provider after potential fallback
-    console.log('🤖 AIService: Final AI Provider:', this.settings.aiProvider);
+    console.log('🤖 Final AI Provider:', this.settings.aiProvider);
     
     const activeFAQs = this.getActiveFAQs();
+    console.log('🔍 Starting similarity search with', activeFAQs.length, 'active FAQs');
     let candidates = [];
     
     // Initialize processing details for logging
@@ -183,9 +193,13 @@ class AIService {
     try {
       // Use embedding-based search if available and we have API key
       if (this.settings.aiProvider && this.settings.aiProvider !== 'LocalMock' && this.apiKey) {
-        console.log('🤖 Using embedding-based search with API key');
+        console.log('🔮 Using embedding-based search with API key');
+        console.log('  📡 API Provider:', this.settings.aiProvider);
+        console.log('  🔑 API Key available:', !!this.apiKey);
         try {
+          console.log('  ⏳ Building query embedding...');
           const queryEmbedding = await buildEmbedding(userMessage, this.settings, this.apiKey);
+          console.log('  ✅ Query embedding built, dimensions:', queryEmbedding.length);
         
         candidates = await Promise.all(
           activeFAQs.map(async (faq) => {
@@ -195,13 +209,13 @@ class AIService {
             if (faq.embedding && Array.isArray(faq.embedding) && faq.embedding.length > 0) {
               // Use stored embedding if available
               similarity = cosineSim(queryEmbedding, faq.embedding);
-              console.log(`🤖 FAQ "${faq.question}" - Embedding similarity: ${similarity}`);
+              console.log(`  🔮 FAQ "${faq.question}" - Embedding similarity: ${similarity.toFixed(4)}`);
             } else {
               // Fallback to combined similarity if no embedding
               const combinedMatch = this.calculateCombinedSimilarity(userMessage, faq);
               similarity = combinedMatch.score;
               matchMethod = combinedMatch.method;
-              console.log(`🤖 FAQ "${faq.question}" - Combined similarity: ${similarity} (${combinedMatch.method})`);
+              console.log(`  🔄 FAQ "${faq.question}" - Combined similarity: ${similarity.toFixed(4)} (${combinedMatch.method})`);
             }
             
             return { faq, sim: similarity, matchMethod };
@@ -210,12 +224,22 @@ class AIService {
         
         // Apply similarity threshold
         const similarityThreshold = this.settings.similarityThreshold || 0.3;
+        console.log('  🔍 Filtering candidates with similarity threshold:', similarityThreshold);
+        
+        const beforeFilter = candidates.length;
         candidates = candidates
           .filter(c => c.sim > similarityThreshold)
           .sort((a, b) => b.sim - a.sim)
           .slice(0, 10);
-          
-        console.log('🤖 Candidates found:', candidates.length, `(similarity > ${similarityThreshold})`);
+        
+        console.log(`  📊 Filtered ${beforeFilter} → ${candidates.length} candidates (similarity > ${similarityThreshold})`);
+        
+        if (candidates.length > 0) {
+          console.log('  🏆 Top candidates:');
+          candidates.slice(0, 3).forEach((c, i) => {
+            console.log(`    ${i + 1}. "${c.faq.question}" - ${c.sim.toFixed(4)} (${c.matchMethod})`);
+          });
+        }
         
           // Update processing details
           processingDetails.candidatesFound = candidates.length;
@@ -290,17 +314,21 @@ class AIService {
     }
 
     // Rerank with signals
+    console.log('🔄 Reranking candidates with signals...');
+    console.log('  📊 Input candidates:', candidates.length);
+    console.log('  🏨 Homestays available:', this.homestays.length);
+    
     const reranked = rerankWithSignals({
       query: userMessage,
       homestays: this.homestays,
       candidates
     });
 
-    console.log('🤖 Reranked count:', reranked.length);
-    console.log('🤖 Top candidates:', reranked.slice(0, 3).map(r => ({ 
-      question: r.faq.question, 
-      final: r.final 
-    })));
+    console.log(`  📈 Reranked ${candidates.length} → ${reranked.length} candidates`);
+    console.log('  🏆 Top reranked candidates:');
+    reranked.slice(0, 3).forEach((r, i) => {
+      console.log(`    ${i + 1}. "${r.faq.question}" - ${r.final.toFixed(4)} (${r.matchMethod || 'unknown'})`);
+    });
     
     // Update processing details with top candidates
     processingDetails.topCandidates = reranked.slice(0, 5).map(r => ({
@@ -323,7 +351,11 @@ class AIService {
     // Update processing details
     processingDetails.confidenceCategory = confidenceCategory;
 
-    console.log('🤖 Best match:', { question: matchedQuestion, confidence });
+    console.log('🎯 ===== FINAL DECISION =====');
+    console.log('  🏆 Best Match:', matchedQuestion || 'None');
+    console.log('  📊 Confidence Score:', confidence.toFixed(4));
+    console.log('  🏷️ Confidence Category:', confidenceCategory);
+    console.log('  🔍 Match Method:', bestMatch?.matchMethod || 'unknown');
 
     // Prepare context for chat model
     const contextItems = reranked.slice(0, 3).map(r => ({
@@ -332,12 +364,12 @@ class AIService {
       confidence: r.final
     }));
 
-    console.log('🤖 Context items:', contextItems.length);
+    console.log('  📝 Context Items:', contextItems.length);
 
     let answer;
     
     // No confidence threshold - always use best match
-    console.log('🤖 Using best match strategy (no threshold)');
+    console.log('⚙️ Strategy: Using best match (no threshold)');
     
     // Update processing details
     processingDetails.confidenceThreshold = 'No threshold (using best match)';
@@ -345,6 +377,9 @@ class AIService {
     
     // Use chat model if available (no confidence threshold)
     if (this.settings.aiProvider && this.settings.aiProvider !== 'LocalMock' && confidence > 0) {
+      console.log('🤖 Using Chat Model for response generation');
+      console.log('  📡 Provider:', this.settings.aiProvider);
+      console.log('  🔑 API Key:', !!this.apiKey);
       try {
         answer = await callChatModel({
           settings: this.settings,
@@ -354,11 +389,11 @@ class AIService {
           userMessage,
           homestays: this.homestays
         });
-        console.log('🤖 Chat model response generated (confidence > threshold)');
+        console.log('  ✅ Chat model response generated');
         processingDetails.finalDecision = 'Chat model (high confidence)';
         processingDetails.processingSteps.push('Chat model response generated');
       } catch (error) {
-        console.error('🤖 Chat model error:', error);
+        console.error('  ❌ Chat model error:', error);
         answer = this.getFallbackAnswer(userMessage, contextItems);
         processingDetails.finalDecision = 'Fallback (chat model error)';
         processingDetails.processingSteps.push('Chat model failed, using fallback');
@@ -367,12 +402,15 @@ class AIService {
       // Always use the best match if available, regardless of confidence threshold
       if (bestMatch && confidence > 0) {
         answer = bestMatch.faq.answer;
-        console.log(`🤖 Using FAQ answer (confidence: ${confidence.toFixed(3)})`);
+        console.log(`📝 Using FAQ answer (confidence: ${confidence.toFixed(3)})`);
+        console.log(`  ❓ Question: "${matchedQuestion}"`);
+        console.log(`  💬 Answer: "${answer.substring(0, 100)}${answer.length > 100 ? '...' : ''}"`);
         processingDetails.finalDecision = `FAQ answer (confidence: ${confidence.toFixed(3)})`;
         processingDetails.processingSteps.push('FAQ answer selected (no threshold)');
       } else {
         answer = this.getFallbackAnswer(userMessage, contextItems);
-        console.log('🤖 Using fallback answer (no matches found)');
+        console.log('🔄 Using fallback answer (no matches found)');
+        console.log(`  💬 Fallback: "${answer.substring(0, 100)}${answer.length > 100 ? '...' : ''}"`);
         processingDetails.finalDecision = 'Fallback (no matches)';
         processingDetails.processingSteps.push('Fallback answer selected (no matches)');
       }
@@ -388,13 +426,24 @@ class AIService {
       processingDetails
     };
 
-    console.log('🤖 Final result:', {
-      answer: answer.substring(0, 100) + '...',
-      confidence,
-      matchedQuestion,
-      processingTime,
+    const totalProcessingTime = Date.now() - startTime;
+    
+    console.log('🏁 ===== AI PROCESSING COMPLETED =====');
+    console.log('  ⏱️ Total Processing Time:', totalProcessingTime + 'ms');
+    console.log('  📊 Final Confidence:', confidence.toFixed(4));
+    console.log('  🏷️ Confidence Category:', confidenceCategory);
+    console.log('  📝 Answer Length:', answer.length + ' characters');
+    console.log('  🔍 Match Method:', bestMatch?.matchMethod || 'unknown');
+    console.log('  📋 Processing Steps:', processingDetails.processingSteps.length);
+    console.log('  ✅ Result Summary:', {
+      hasAnswer: !!answer,
+      hasMatch: !!matchedQuestion,
+      confidence: confidence.toFixed(4),
+      processingTime: totalProcessingTime + 'ms',
+      answerPreview: answer.substring(0, 100) + (answer.length > 100 ? '...' : ''),
       finalDecision: processingDetails.finalDecision
     });
+    console.log('=====================================');
 
     return result;
   }
