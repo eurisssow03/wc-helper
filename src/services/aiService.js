@@ -40,9 +40,9 @@ class AIService {
       }
     });
 
-    // Only set aiProvider to LocalMock if it's completely missing
+    // Only set aiProvider to OpenAI if it's completely missing
     if (!this.settings.aiProvider) {
-      this.settings.aiProvider = 'LocalMock';
+      this.settings.aiProvider = 'OpenAI';
       settingsUpdated = true;
     }
 
@@ -84,9 +84,7 @@ class AIService {
       return this.apiKey;
     } else {
       console.warn('⚠️ No API key found in settings');
-      console.log('🔄 Switching to LocalMock mode');
-      this.settings.aiProvider = 'LocalMock';
-      writeLS(STORAGE_KEYS.settings, this.settings);
+      console.log('🔄 AI will not function without API key');
       this.apiKeyLoaded = true; // Mark as loaded to prevent retry
       return null;
     }
@@ -154,17 +152,10 @@ class AIService {
       aiProvider: this.settings.aiProvider
     });
     
-    // Load API key from backend if needed
-    if (this.settings.aiProvider && this.settings.aiProvider !== 'LocalMock') {
-      const apiKey = await this.loadApiKey();
-      if (!apiKey) {
-        console.log('🔄 No API key available, forcing LocalMock mode');
-        this.settings.aiProvider = 'LocalMock';
-        // Update settings in localStorage
-        writeLS(STORAGE_KEYS.settings, this.settings);
-        // Refresh settings to ensure the change is applied
-        this.refreshData();
-      }
+    // Load API key from frontend settings
+    const apiKey = await this.loadApiKey();
+    if (!apiKey) {
+      console.log('⚠️ No API key available - AI functionality will be limited');
     }
     
     // Log final AI provider after potential fallback
@@ -249,8 +240,8 @@ class AIService {
     };
     
     try {
-      // Use embedding-based search if available and we have API key
-      if (this.settings.aiProvider && this.settings.aiProvider !== 'LocalMock' && this.apiKey) {
+      // Use embedding-based search if we have API key
+      if (this.apiKey) {
         console.log('🔮 Using embedding-based search with API key');
         console.log('  📡 API Provider:', this.settings.aiProvider);
         console.log('  🔑 API Key available:', !!this.apiKey);
@@ -307,9 +298,7 @@ class AIService {
         } catch (embeddingError) {
           console.error('❌ Embedding search failed:', embeddingError.message);
           console.log('🔄 Falling back to simple similarity search');
-          // Force switch to LocalMock and use simple similarity
-          this.settings.aiProvider = 'LocalMock';
-          writeLS(STORAGE_KEYS.settings, this.settings);
+          // Use simple similarity as fallback
           
           // Use combined similarity as fallback
           candidates = activeFAQs
@@ -328,8 +317,8 @@ class AIService {
           processingDetails.processingSteps.push(`Embedding failed, used simple similarity fallback`);
         }
       } else {
-        // Use combined similarity for LocalMock or when no AI provider
-        console.log('🤖 Using combined similarity search (LocalMock or no API key)');
+        // Use combined similarity when no API key
+        console.log('🤖 Using combined similarity search (no API key)');
         candidates = activeFAQs
           .map(faq => {
             const combinedMatch = this.calculateCombinedSimilarity(userMessage, faq);
@@ -434,7 +423,7 @@ class AIService {
     processingDetails.contextItems = contextItems;
     
     // Use chat model if available (no confidence threshold)
-    if (this.settings.aiProvider && this.settings.aiProvider !== 'LocalMock' && confidence > 0) {
+    if (this.apiKey && confidence > 0) {
       console.log('🤖 Using Chat Model for response generation');
       console.log('  📡 Provider:', this.settings.aiProvider);
       console.log('  🔑 API Key:', !!this.apiKey);

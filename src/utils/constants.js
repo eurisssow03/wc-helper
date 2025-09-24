@@ -38,7 +38,7 @@ export const defaultSettings = {
   fallbackReply: "Sorry, I couldn't understand your question. We will have someone contact you soon.",
   // AI settings
   answerMode: "AI", // AI or Simple
-  aiProvider: "LocalMock", // Options: OpenAI / Google / AzureOpenAI / LocalMock etc.
+  aiProvider: "OpenAI", // Options: OpenAI / Google / AzureOpenAI etc.
   embeddingModel: "text-embedding-3-small", // OpenAI embedding model
   chatModel: "gpt-3.5-turbo", // OpenAI chat model
   apiKeyEnc: "", // Base64 encrypted storage
@@ -132,14 +132,6 @@ export const AI_MODEL_OPTIONS = {
       { value: "gpt-35-turbo", label: "gpt-35-turbo", description: "Azure OpenAI GPT-3.5" },
       { value: "gpt-4", label: "gpt-4", description: "Azure OpenAI GPT-4" },
       { value: "gpt-4-turbo", label: "gpt-4-turbo", description: "Azure OpenAI GPT-4 Turbo" }
-    ]
-  },
-  LocalMock: {
-    embedding: [
-      { value: "mock-embed-1", label: "mock-embed-1", description: "Local demo embedding (no API calls)" }
-    ],
-    chat: [
-      { value: "mock-chat-1", label: "mock-chat-1", description: "Local demo chat (no API calls)" }
     ]
   }
 };
