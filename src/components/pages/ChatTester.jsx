@@ -8,12 +8,39 @@ export function ChatTester({ onLogged }) {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [faqs, setFaqs] = useState([]);
+  const [homestays, setHomestays] = useState([]);
   const messagesEndRef = useRef(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Load data on component mount and refresh when data changes
+  useEffect(() => {
+    const currentFaqs = readLS(STORAGE_KEYS.faqs, []);
+    const currentHomestays = readLS(STORAGE_KEYS.homestays, []);
+    
+    console.log('ChatTester: Loading data on component mount:');
+    console.log('FAQs:', currentFaqs.length);
+    console.log('Homestays:', currentHomestays.length);
+    
+    setFaqs(currentFaqs);
+    setHomestays(currentHomestays);
+  }, []);
+
+  // Refresh data periodically to catch updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const currentFaqs = readLS(STORAGE_KEYS.faqs, []);
+      const currentHomestays = readLS(STORAGE_KEYS.homestays, []);
+      setFaqs(currentFaqs);
+      setHomestays(currentHomestays);
+    }, 5000); // Refresh every 5 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSendMessage = async () => {
     if (!inputText.trim() || isLoading) return;
@@ -48,6 +75,11 @@ export function ChatTester({ onLogged }) {
       };
 
       setMessages(prev => [...prev, botMessage]);
+
+      // Trigger callback to update logs
+      if (onLogged) {
+        onLogged();
+      }
 
     } catch (error) {
       console.error('Error processing message:', error);
