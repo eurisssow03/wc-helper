@@ -207,18 +207,15 @@ export function SettingsPage({ onSaved }) {
 
         <div style={{ marginBottom: 16 }}>
           <label style={baseStyles.label}>API Key</label>
-          <div style={{
-            padding: 12,
-            backgroundColor: '#f0f9ff',
-            border: '1px solid #0ea5e9',
-            borderRadius: 6,
-            fontSize: 14,
-            color: '#0369a1'
-          }}>
-            🔐 API Key is managed by the backend server for security
-          </div>
+          <input
+            type="password"
+            value={settings.apiKeyEnc ? atob(settings.apiKeyEnc) : ''}
+            onChange={(e) => handleChange('apiKeyEnc', btoa(e.target.value))}
+            placeholder="Enter your OpenAI API key"
+            style={baseStyles.input}
+          />
           <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-            The OpenAI API key is securely stored on the server and automatically used for AI processing
+            Your API key is encrypted and stored locally. Keep it secure and don't share it.
           </div>
         </div>
       </div>

@@ -40,9 +40,9 @@ class AIService {
       }
     });
 
-    // Only set aiProvider to OpenAI if it's completely missing
+    // Only set aiProvider to LocalMock if it's completely missing
     if (!this.settings.aiProvider) {
-      this.settings.aiProvider = 'OpenAI';
+      this.settings.aiProvider = 'LocalMock';
       settingsUpdated = true;
     }
 
@@ -68,44 +68,23 @@ class AIService {
     console.log('🔄 AIService: Force refresh completed');
   }
 
-  // Load API key from backend
+  // Load API key from frontend settings
   async loadApiKey() {
     if (this.apiKeyLoaded) {
       return this.apiKey;
     }
 
-    try {
-      const response = await fetch('https://wc-helper.onrender.com/api/config/openai-key', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        // Add timeout to prevent hanging
-        signal: AbortSignal.timeout(5000) // 5 second timeout
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.success && data.apiKey) {
-        this.apiKey = data.apiKey;
-        this.apiKeyLoaded = true;
-        console.log('🤖 OpenAI API key loaded from backend');
-        return this.apiKey;
-      } else {
-        console.warn('⚠️ Backend available but no valid API key provided');
-        console.log('🔄 Switching to LocalMock mode');
-        this.settings.aiProvider = 'LocalMock';
-        writeLS(STORAGE_KEYS.settings, this.settings);
-        return null;
-      }
-    } catch (error) {
-      console.warn('🔌 Backend not available for API key loading:', error.message);
-      console.log('🔄 Falling back to LocalMock mode');
-      // Fallback to LocalMock if backend is unavailable
+    // Get API key from frontend settings (encrypted in localStorage)
+    const apiKey = this.settings.apiKeyEnc ? atob(this.settings.apiKeyEnc) : '';
+    
+    if (apiKey && apiKey.trim()) {
+      this.apiKey = apiKey.trim();
+      this.apiKeyLoaded = true;
+      console.log('🤖 OpenAI API key loaded from frontend settings');
+      return this.apiKey;
+    } else {
+      console.warn('⚠️ No API key found in settings');
+      console.log('🔄 Switching to LocalMock mode');
       this.settings.aiProvider = 'LocalMock';
       writeLS(STORAGE_KEYS.settings, this.settings);
       this.apiKeyLoaded = true; // Mark as loaded to prevent retry
