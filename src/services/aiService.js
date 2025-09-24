@@ -75,7 +75,19 @@ class AIService {
     }
 
     try {
-      const response = await fetch('/api/config/openai-key');
+      const response = await fetch('https://wc-helper.onrender.com/api/config/openai-key', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Add timeout to prevent hanging
+        signal: AbortSignal.timeout(5000) // 5 second timeout
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
       
       if (data.success && data.apiKey) {
@@ -84,14 +96,19 @@ class AIService {
         console.log('🤖 OpenAI API key loaded from backend');
         return this.apiKey;
       } else {
-        console.error('❌ Failed to load OpenAI API key from backend');
+        console.warn('⚠️ Backend available but no valid API key provided');
+        console.log('🔄 Switching to LocalMock mode');
+        this.settings.aiProvider = 'LocalMock';
+        writeLS(STORAGE_KEYS.settings, this.settings);
         return null;
       }
     } catch (error) {
-      console.error('❌ Error loading OpenAI API key:', error);
+      console.warn('🔌 Backend not available for API key loading:', error.message);
       console.log('🔄 Falling back to LocalMock mode');
       // Fallback to LocalMock if backend is unavailable
       this.settings.aiProvider = 'LocalMock';
+      writeLS(STORAGE_KEYS.settings, this.settings);
+      this.apiKeyLoaded = true; // Mark as loaded to prevent retry
       return null;
     }
   }
@@ -125,13 +142,18 @@ class AIService {
     // Load API key from backend if needed
     if (this.settings.aiProvider && this.settings.aiProvider !== 'LocalMock') {
       const apiKey = await this.loadApiKey();
-      if (!apiKey && this.settings.aiProvider !== 'LocalMock') {
-        console.log('🔄 No API key available, falling back to LocalMock mode');
+      if (!apiKey) {
+        console.log('🔄 No API key available, forcing LocalMock mode');
         this.settings.aiProvider = 'LocalMock';
         // Update settings in localStorage
         writeLS(STORAGE_KEYS.settings, this.settings);
+        // Refresh settings to ensure the change is applied
+        this.refreshData();
       }
     }
+    
+    // Log final AI provider after potential fallback
+    console.log('🤖 AIService: Final AI Provider:', this.settings.aiProvider);
     
     const activeFAQs = this.getActiveFAQs();
     let candidates = [];
@@ -156,7 +178,8 @@ class AIService {
       // Use embedding-based search if available and we have API key
       if (this.settings.aiProvider && this.settings.aiProvider !== 'LocalMock' && this.apiKey) {
         console.log('🤖 Using embedding-based search with API key');
-        const queryEmbedding = await buildEmbedding(userMessage, this.settings, this.apiKey);
+        try {
+          const queryEmbedding = await buildEmbedding(userMessage, this.settings, this.apiKey);
         
         candidates = await Promise.all(
           activeFAQs.map(async (faq) => {
@@ -185,11 +208,34 @@ class AIService {
           
         console.log('🤖 Candidates found:', candidates.length, `(similarity > ${similarityThreshold})`);
         
-        // Update processing details
-        processingDetails.candidatesFound = candidates.length;
-        processingDetails.similarityThreshold = similarityThreshold;
-        processingDetails.searchMethod = 'Embedding-based';
-        processingDetails.processingSteps.push(`Embedding-based search completed (threshold: ${similarityThreshold})`);
+          // Update processing details
+          processingDetails.candidatesFound = candidates.length;
+          processingDetails.similarityThreshold = similarityThreshold;
+          processingDetails.searchMethod = 'Embedding-based';
+          processingDetails.processingSteps.push(`Embedding-based search completed (threshold: ${similarityThreshold})`);
+        } catch (embeddingError) {
+          console.error('❌ Embedding search failed:', embeddingError.message);
+          console.log('🔄 Falling back to simple similarity search');
+          // Force switch to LocalMock and use simple similarity
+          this.settings.aiProvider = 'LocalMock';
+          writeLS(STORAGE_KEYS.settings, this.settings);
+          
+          // Use simple similarity as fallback
+          candidates = activeFAQs
+            .map(faq => {
+              const sim = simpleSimilarityScore(userMessage, faq);
+              console.log(`🤖 FAQ "${faq.question}" - Fallback similarity: ${sim}`);
+              return { faq, sim };
+            })
+            .filter(c => c.sim > (this.settings.similarityThreshold || 0.3))
+            .sort((a, b) => b.sim - a.sim)
+            .slice(0, 10);
+          
+          processingDetails.candidatesFound = candidates.length;
+          processingDetails.similarityThreshold = this.settings.similarityThreshold || 0.3;
+          processingDetails.searchMethod = 'Simple similarity (embedding fallback)';
+          processingDetails.processingSteps.push(`Embedding failed, used simple similarity fallback`);
+        }
       } else {
         // Use simple similarity for LocalMock or when no AI provider
         console.log('🤖 Using simple similarity search (LocalMock or no API key)');
