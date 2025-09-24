@@ -27,10 +27,11 @@ export const defaultSettings = {
   fallbackReply: "Sorry, I couldn't understand your question. We will have someone contact you soon.",
   // AI settings
   answerMode: "AI", // AI or Simple
-  aiProvider: "OpenAI", // Options: OpenAI / Google / AzureOpenAI etc.
+  aiProvider: "LocalMock", // Options: OpenAI / Google / AzureOpenAI / LocalMock etc.
   embeddingModel: "text-embedding-3-small", // OpenAI embedding model
   chatModel: "gpt-3.5-turbo", // OpenAI chat model
   apiKeyEnc: "", // Base64 encrypted storage
+  similarityThreshold: 0.3, // Similarity threshold for FAQ matching
   preferredLang: "auto", // zh / en / auto
   confidenceThreshold: 0.6,
   maxTokens: 512,

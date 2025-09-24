@@ -60,8 +60,15 @@ export function ChatTester({ onLogged }) {
     setMessages(prev => [...prev, newUserMessage]);
 
     try {
+      console.log('🤖 ChatTester: Starting message processing...');
+      console.log('🤖 ChatTester: Current settings:', aiService.settings);
+      console.log('🤖 ChatTester: FAQs available:', aiService.faqs.length);
+      console.log('🤖 ChatTester: Homestays available:', aiService.homestays.length);
+      
       // Process the message using unified AI service
       const response = await aiService.processAndLog(userMessage, 'ChatTester');
+      
+      console.log('🤖 ChatTester: Response received:', response);
       
       // Add bot response to chat
       const botMessage = {
@@ -82,12 +89,12 @@ export function ChatTester({ onLogged }) {
       }
 
     } catch (error) {
-      console.error('Error processing message:', error);
+      console.error('❌ ChatTester: Error processing message:', error);
       
       const errorMessage = {
         id: Date.now() + 1,
         type: 'bot',
-        text: 'Sorry, an error occurred while processing your message.',
+        text: `Sorry, an error occurred while processing your message. Error: ${error.message}`,
         timestamp: new Date().toISOString(),
         isError: true
       };

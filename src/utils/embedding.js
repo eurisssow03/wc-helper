@@ -16,18 +16,19 @@ export function hashingVectorizer(tokens, dim=256){
   return v.map(x=>x/norm);
 }
 
-export async function buildEmbedding(text, settings){
+export async function buildEmbedding(text, settings, apiKey = null){
   // Always use OpenAI for embedding generation
   try {
-      const apiKey = settings.apiKeyEnc ? atob(settings.apiKeyEnc) : '';
-      if (!apiKey) {
+      // Use provided API key or try to get from settings
+      const key = apiKey || (settings.apiKeyEnc ? atob(settings.apiKeyEnc) : '');
+      if (!key) {
         throw new Error('OpenAI API key is required');
       }
 
       const response = await fetch('https://api.openai.com/v1/embeddings', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          'Authorization': `Bearer ${key}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({

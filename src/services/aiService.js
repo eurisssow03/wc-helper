@@ -16,6 +16,32 @@ class AIService {
     this.homestays = readLS(STORAGE_KEYS.homestays, []);
     this.apiKey = null;
     this.apiKeyLoaded = false;
+    
+    // Ensure we have valid settings
+    this.initializeSettings();
+  }
+
+  // Initialize settings with defaults if missing
+  initializeSettings() {
+    const defaultSettings = {
+      aiProvider: 'LocalMock',
+      confidenceThreshold: 0.6,
+      similarityThreshold: 0.3,
+      alwaysOn: true
+    };
+
+    let settingsUpdated = false;
+    Object.keys(defaultSettings).forEach(key => {
+      if (this.settings[key] === undefined || this.settings[key] === null) {
+        this.settings[key] = defaultSettings[key];
+        settingsUpdated = true;
+      }
+    });
+
+    if (settingsUpdated) {
+      console.log('🔧 Initializing AI service with default settings');
+      writeLS(STORAGE_KEYS.settings, this.settings);
+    }
   }
 
   // Update data from localStorage
@@ -46,6 +72,9 @@ class AIService {
       }
     } catch (error) {
       console.error('❌ Error loading OpenAI API key:', error);
+      console.log('🔄 Falling back to LocalMock mode');
+      // Fallback to LocalMock if backend is unavailable
+      this.settings.aiProvider = 'LocalMock';
       return null;
     }
   }
@@ -69,13 +98,21 @@ class AIService {
     console.log('🤖 AIService: Processing message:', userMessage);
     console.log('🤖 AIService: Available FAQs:', this.faqs.length);
     console.log('🤖 AIService: Active FAQs:', this.getActiveFAQs().length);
+    console.log('🤖 AIService: AI Provider:', this.settings.aiProvider);
+    console.log('🤖 AIService: API Key loaded:', !!this.apiKey);
     
     // Refresh data to get latest changes
     this.refreshData();
     
     // Load API key from backend if needed
     if (this.settings.aiProvider && this.settings.aiProvider !== 'LocalMock') {
-      await this.loadApiKey();
+      const apiKey = await this.loadApiKey();
+      if (!apiKey && this.settings.aiProvider !== 'LocalMock') {
+        console.log('🔄 No API key available, falling back to LocalMock mode');
+        this.settings.aiProvider = 'LocalMock';
+        // Update settings in localStorage
+        writeLS(STORAGE_KEYS.settings, this.settings);
+      }
     }
     
     const activeFAQs = this.getActiveFAQs();
@@ -98,9 +135,10 @@ class AIService {
     };
     
     try {
-      // Use embedding-based search if available
-      if (this.settings.aiProvider && this.settings.aiProvider !== 'LocalMock') {
-        const queryEmbedding = await buildEmbedding(userMessage, this.settings);
+      // Use embedding-based search if available and we have API key
+      if (this.settings.aiProvider && this.settings.aiProvider !== 'LocalMock' && this.apiKey) {
+        console.log('🤖 Using embedding-based search with API key');
+        const queryEmbedding = await buildEmbedding(userMessage, this.settings, this.apiKey);
         
         candidates = await Promise.all(
           activeFAQs.map(async (faq) => {
@@ -136,6 +174,7 @@ class AIService {
         processingDetails.processingSteps.push(`Embedding-based search completed (threshold: ${similarityThreshold})`);
       } else {
         // Use simple similarity for LocalMock or when no AI provider
+        console.log('🤖 Using simple similarity search (LocalMock or no API key)');
         candidates = activeFAQs
           .map(faq => {
             const sim = simpleSimilarityScore(userMessage, faq);
@@ -156,6 +195,7 @@ class AIService {
       }
     } catch (error) {
       console.error('🤖 Embedding search error:', error);
+      console.log('🔄 Falling back to simple similarity search');
       // Fallback to simple similarity
       candidates = activeFAQs
         .map(faq => {
@@ -348,9 +388,40 @@ class AIService {
 
   // Process message and log (convenience method)
   async processAndLog(userMessage, channel = 'AIService') {
-    const response = await this.processMessage(userMessage);
-    const logEntry = this.logInteraction(userMessage, response, channel, response.processingDetails);
-    return { ...response, logEntry };
+    try {
+      const response = await this.processMessage(userMessage);
+      const logEntry = this.logInteraction(userMessage, response, channel, response.processingDetails);
+      return { ...response, logEntry };
+    } catch (error) {
+      console.error('❌ Error in processAndLog:', error);
+      
+      // Return a fallback response
+      const fallbackResponse = {
+        answer: 'I apologize, but I\'m experiencing technical difficulties. Please try again later.',
+        confidence: 0,
+        matchedQuestion: null,
+        processingTime: 0,
+        contextItems: [],
+        source: 'AIService',
+        processingDetails: {
+          totalFaqs: this.faqs.length,
+          activeFaqs: this.getActiveFAQs().length,
+          candidatesFound: 0,
+          topCandidates: [],
+          confidenceThreshold: this.settings.confidenceThreshold || 0.6,
+          similarityThreshold: this.settings.similarityThreshold || 0.3,
+          finalDecision: 'Error fallback',
+          contextItems: [],
+          processingSteps: ['Error occurred', 'Fallback response generated'],
+          searchMethod: 'Error',
+          rerankingApplied: false,
+          confidenceCategory: 'Low'
+        }
+      };
+      
+      const logEntry = this.logInteraction(userMessage, fallbackResponse, channel, fallbackResponse.processingDetails);
+      return { ...fallbackResponse, logEntry };
+    }
   }
 }
 
