@@ -12,7 +12,39 @@ export function SettingsPage({ onSaved }) {
     const savedSettings = readLS(STORAGE_KEYS.settings, defaultSettings);
     console.log('🔧 SettingsPage: Loading settings:', savedSettings);
     console.log('🔧 SettingsPage: Default settings:', defaultSettings);
-    setSettings(savedSettings);
+    
+    // Migrate old businessHours structure to new structure
+    const migrateBusinessHours = (oldBusinessHours) => {
+      if (!oldBusinessHours) return defaultSettings.businessHours;
+      
+      // If it's the old structure (only has tz, start, end), migrate it
+      if (oldBusinessHours.tz && oldBusinessHours.start && oldBusinessHours.end && 
+          !oldBusinessHours.monday) {
+        console.log('🔄 Migrating old businessHours structure');
+        return {
+          ...defaultSettings.businessHours,
+          tz: oldBusinessHours.tz,
+          start: oldBusinessHours.start,
+          end: oldBusinessHours.end
+        };
+      }
+      
+      // If it's already the new structure, merge with defaults
+      return {
+        ...defaultSettings.businessHours,
+        ...oldBusinessHours
+      };
+    };
+    
+    // Ensure businessHours has the proper structure
+    const mergedSettings = {
+      ...defaultSettings,
+      ...savedSettings,
+      businessHours: migrateBusinessHours(savedSettings.businessHours)
+    };
+    
+    console.log('🔧 SettingsPage: Merged settings:', mergedSettings);
+    setSettings(mergedSettings);
   }, []);
 
   const handleChange = (key, value) => {
@@ -271,6 +303,9 @@ export function SettingsPage({ onSaved }) {
     console.log('🔧 SettingsPage: Current settings:', settings);
     console.log('🔧 SettingsPage: Business hours:', settings.businessHours);
     
+    // Ensure businessHours exists and has proper structure
+    const businessHours = settings.businessHours || defaultSettings.businessHours;
+    
     const daysOfWeek = [
       { key: 'monday', label: 'Monday' },
       { key: 'tuesday', label: 'Tuesday' },
@@ -289,7 +324,7 @@ export function SettingsPage({ onSaved }) {
           <div style={{ marginBottom: 16 }}>
             <label style={baseStyles.label}>Timezone</label>
             <select
-              value={settings.businessHours.tz}
+              value={businessHours.tz}
               onChange={(e) => handleNestedChange('businessHours', 'tz', e.target.value)}
               style={baseStyles.select}
             >
@@ -342,7 +377,7 @@ export function SettingsPage({ onSaved }) {
                     type="button"
                     onClick={() => {
                       // Set all days to 9:00-18:00 and enabled
-                      const newBusinessHours = { ...settings.businessHours };
+                      const newBusinessHours = { ...businessHours };
                       daysOfWeek.forEach(day => {
                         newBusinessHours[day.key] = {
                           start: '09:00',
@@ -364,7 +399,7 @@ export function SettingsPage({ onSaved }) {
                     type="button"
                     onClick={() => {
                       // Disable all days
-                      const newBusinessHours = { ...settings.businessHours };
+                      const newBusinessHours = { ...businessHours };
                       daysOfWeek.forEach(day => {
                         newBusinessHours[day.key] = {
                           ...newBusinessHours[day.key],
@@ -434,9 +469,9 @@ export function SettingsPage({ onSaved }) {
                     <div>
                       <input
                         type="time"
-                        value={settings.businessHours[day.key]?.start || '09:00'}
+                        value={businessHours[day.key]?.start || '09:00'}
                         onChange={(e) => handleNestedChange('businessHours', day.key, {
-                          ...settings.businessHours[day.key],
+                          ...businessHours[day.key],
                           start: e.target.value
                         })}
                         style={{ 
@@ -451,9 +486,9 @@ export function SettingsPage({ onSaved }) {
                     <div>
                       <input
                         type="time"
-                        value={settings.businessHours[day.key]?.end || '18:00'}
+                        value={businessHours[day.key]?.end || '18:00'}
                         onChange={(e) => handleNestedChange('businessHours', day.key, {
-                          ...settings.businessHours[day.key],
+                          ...businessHours[day.key],
                           end: e.target.value
                         })}
                         style={{ 
@@ -468,9 +503,9 @@ export function SettingsPage({ onSaved }) {
                     <div style={{ display: 'flex', justifyContent: 'center' }}>
                       <input
                         type="checkbox"
-                        checked={settings.businessHours[day.key]?.enabled !== false}
+                        checked={businessHours[day.key]?.enabled !== false}
                         onChange={(e) => handleNestedChange('businessHours', day.key, {
-                          ...settings.businessHours[day.key],
+                          ...businessHours[day.key],
                           enabled: e.target.checked
                         })}
                         style={{ transform: 'scale(1.3)' }}
@@ -512,19 +547,19 @@ export function SettingsPage({ onSaved }) {
                 <div style={{ fontSize: 12, color: '#6c757d', marginBottom: 4 }}>
                   <strong>Active Days:</strong> {
                     daysOfWeek
-                      .filter(day => settings.businessHours[day.key]?.enabled !== false)
+                      .filter(day => businessHours[day.key]?.enabled !== false)
                       .map(day => day.label)
                       .join(', ') || 'None configured'
                   }
                 </div>
                 {daysOfWeek
-                  .filter(day => settings.businessHours[day.key]?.enabled !== false)
+                  .filter(day => businessHours[day.key]?.enabled !== false)
                   .length > 0 && (
                   <div style={{ fontSize: 11, color: '#6c757d' }}>
                     <strong>Hours:</strong> {
                       daysOfWeek
-                        .filter(day => settings.businessHours[day.key]?.enabled !== false)
-                        .map(day => `${day.label}: ${settings.businessHours[day.key]?.start || '09:00'}-${settings.businessHours[day.key]?.end || '18:00'}`)
+                        .filter(day => businessHours[day.key]?.enabled !== false)
+                        .map(day => `${day.label}: ${businessHours[day.key]?.start || '09:00'}-${businessHours[day.key]?.end || '18:00'}`)
                         .join(', ')
                     }
                   </div>
