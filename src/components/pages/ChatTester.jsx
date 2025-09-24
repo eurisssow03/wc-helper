@@ -1,41 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { readLS, writeLS, STORAGE_KEYS } from '../../services/storage.js';
-import { simpleSimilarityScore } from '../../utils/nlp.js';
-import { rerankWithSignals, callChatModel } from '../../utils/rag.js';
-import { buildEmbedding, cosineSim } from '../../utils/embedding.js';
 import { baseStyles, breakpoints } from '../../utils/styles.js';
 import { formatDateTime } from '../../utils/helpers.js';
+import aiService from '../../services/aiService.js';
 
 export function ChatTester({ onLogged }) {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [settings, setSettings] = useState(readLS(STORAGE_KEYS.settings, {}));
-  const [homestays, setHomestays] = useState(readLS(STORAGE_KEYS.homestays, []));
-  const [faqs, setFaqs] = useState(readLS(STORAGE_KEYS.faqs, []));
   const messagesEndRef = useRef(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  // Load initial data
-  useEffect(() => {
-    const currentSettings = readLS(STORAGE_KEYS.settings, {});
-    const currentHomestays = readLS(STORAGE_KEYS.homestays, []);
-    const currentFaqs = readLS(STORAGE_KEYS.faqs, []);
-    
-    console.log('Loading data on component mount:');
-    console.log('Settings:', currentSettings);
-    console.log('Homestays:', currentHomestays.length);
-    console.log('FAQs:', currentFaqs.length);
-    console.log('FAQ details:', currentFaqs.map(f => ({ question: f.question, is_active: f.is_active })));
-    
-    setSettings(currentSettings);
-    setHomestays(currentHomestays);
-    setFaqs(currentFaqs);
-  }, []);
 
   const handleSendMessage = async () => {
     if (!inputText.trim() || isLoading) return;
@@ -55,8 +33,8 @@ export function ChatTester({ onLogged }) {
     setMessages(prev => [...prev, newUserMessage]);
 
     try {
-      // Process the message using RAG
-      const response = await processMessage(userMessage);
+      // Process the message using unified AI service
+      const response = await aiService.processAndLog(userMessage, 'ChatTester');
       
       // Add bot response to chat
       const botMessage = {
@@ -70,9 +48,6 @@ export function ChatTester({ onLogged }) {
       };
 
       setMessages(prev => [...prev, botMessage]);
-
-      // Log the interaction
-      logInteraction(userMessage, response);
 
     } catch (error) {
       console.error('Error processing message:', error);
@@ -91,147 +66,6 @@ export function ChatTester({ onLogged }) {
     }
   };
 
-  const processMessage = async (userMessage) => {
-    const startTime = Date.now();
-    let candidates = [];
-    
-    console.log('=== PROCESSING MESSAGE ===');
-    console.log('User message:', userMessage);
-    console.log('Available FAQs:', faqs.length);
-    console.log('AI Provider:', settings.aiProvider);
-    console.log('FAQs:', faqs.map(f => ({ question: f.question, is_active: f.is_active })));
-    console.log('Raw FAQs from localStorage:', JSON.parse(localStorage.getItem(STORAGE_KEYS.faqs) || '[]'));
-    
-    // Use embedding-based search for OpenAI
-    try {
-      const queryEmbedding = await buildEmbedding(userMessage, settings);
-      
-      candidates = await Promise.all(
-        faqs.map(async (faq) => {
-          let similarity = 0;
-          
-          if (faq.embedding && Array.isArray(faq.embedding) && faq.embedding.length > 0) {
-            // Use stored embedding if available
-            similarity = cosineSim(queryEmbedding, faq.embedding);
-            console.log(`FAQ "${faq.question}" - Using embedding similarity: ${similarity}`);
-            console.log(`Query embedding length: ${queryEmbedding.length}, FAQ embedding length: ${faq.embedding.length}`);
-            console.log(`Query embedding sample: [${queryEmbedding.slice(0, 5).join(', ')}...]`);
-            console.log(`FAQ embedding sample: [${faq.embedding.slice(0, 5).join(', ')}...]`);
-          } else {
-            // Fallback to simple similarity if no embedding
-            similarity = simpleSimilarityScore(userMessage, faq);
-            console.log(`FAQ "${faq.question}" - Using simple similarity: ${similarity}, has embedding: ${!!faq.embedding}`);
-          }
-          
-          return { faq, sim: similarity };
-        })
-      );
-      
-      candidates = candidates
-        .filter(c => c.sim > 0)
-        .sort((a, b) => b.sim - a.sim)
-        .slice(0, 10);
-        
-      console.log('Candidates found:', candidates.length);
-      console.log('All candidates with scores:', candidates.map(c => ({ 
-        question: c.faq.question, 
-        sim: c.sim,
-        is_active: c.faq.is_active 
-      })));
-      console.log('Top candidates:', candidates.slice(0, 3).map(c => ({ question: c.faq.question, sim: c.sim })));
-    } catch (error) {
-      console.error('Embedding search error:', error);
-      // Fallback to simple similarity
-      candidates = faqs
-        .map(faq => {
-          const sim = simpleSimilarityScore(userMessage, faq);
-          console.log(`Fallback FAQ "${faq.question}" - similarity: ${sim}`);
-          return { faq, sim };
-        })
-        .filter(c => c.sim > 0)
-        .sort((a, b) => b.sim - a.sim)
-        .slice(0, 10);
-        
-      console.log('Fallback candidates found:', candidates.length);
-    }
-
-    // Rerank with signals
-    const reranked = rerankWithSignals({
-      query: userMessage,
-      homestays,
-      candidates
-    });
-
-    console.log('=== AFTER RERANKING ===');
-    console.log('Reranked count:', reranked.length);
-    console.log('All reranked with final scores:', reranked.map(r => ({ 
-      question: r.faq.question, 
-      sim: r.sim,
-      final: r.final,
-      signals: r._signals
-    })));
-    console.log('Top reranked:', reranked.slice(0, 3).map(r => ({ question: r.faq.question, final: r.final })));
-
-    const processingTime = Date.now() - startTime;
-
-    // Get the best match
-    const bestMatch = reranked[0];
-    const confidence = bestMatch?.final || 0;
-    const matchedQuestion = bestMatch?.faq?.question || null;
-
-    console.log('Best match:', { question: matchedQuestion, confidence });
-
-    // Prepare context for chat model
-    const contextItems = reranked.slice(0, 3).map(r => ({
-      question: r.faq.question,
-      answer: r.faq.answer,
-      confidence: r.final
-    }));
-
-    console.log('=== CONTEXT ITEMS ===');
-    console.log('Context items count:', contextItems.length);
-    console.log('Context items:', contextItems.map(item => ({
-      question: item.question,
-      answer: item.answer,
-      confidence: item.confidence
-    })));
-
-    // Call chat model
-    const answer = await callChatModel({
-      settings,
-      systemPrompt: "You are a professional homestay customer service assistant. Please answer customer questions based on the provided FAQ information and available homestay data. Always provide homestay-specific information when relevant, even for general questions. If the user asks about check-in times, amenities, or other general topics, provide information for all available homestays.",
-      contextItems,
-      userMessage,
-      homestays
-    });
-
-    return {
-      answer,
-      confidence,
-      matchedQuestion,
-      processingTime,
-      contextItems
-    };
-  };
-
-  const logInteraction = (userMessage, response) => {
-    const logEntry = {
-      id: Date.now(),
-      created_at: new Date().toISOString(),
-      channel: 'ChatTester',
-      incoming_text: userMessage,
-      matched_question: response.matchedQuestion,
-      confidence: response.confidence,
-      answer: response.answer,
-      processing_time: response.processingTime
-    };
-
-    const logs = readLS(STORAGE_KEYS.logs, []);
-    logs.push(logEntry);
-    writeLS(STORAGE_KEYS.logs, logs);
-    
-    if (onLogged) onLogged();
-  };
 
   const clearChat = () => {
     setMessages([]);

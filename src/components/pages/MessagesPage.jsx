@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { baseStyles } from '../../utils/styles.js';
 import { formatDateTime } from '../../utils/helpers.js';
+import messageSyncService from '../../services/messageSyncService.js';
 
 export function MessagesPage() {
   const [messages, setMessages] = useState([]);
@@ -10,52 +11,58 @@ export function MessagesPage() {
   const [filter, setFilter] = useState('all'); // all, processed, error
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Fetch messages from API
+  // Fetch messages from unified source
   const fetchMessages = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/messages?limit=100');
-      const data = await response.json();
       
-      if (data.success) {
-        setMessages(data.messages);
-      } else {
-        setError('Failed to fetch messages');
-      }
+      // First try to sync from webhook server
+      await messageSyncService.syncMessagesFromWebhook();
+      
+      // Then get messages from localStorage
+      const localMessages = messageSyncService.getMessages();
+      setMessages(localMessages);
+      
+      // Calculate stats
+      const stats = {
+        total: localMessages.length,
+        processed: localMessages.filter(m => m.status === 'processed').length,
+        errors: localMessages.filter(m => m.status === 'error').length,
+        today: localMessages.filter(m => {
+          const today = new Date().toDateString();
+          const messageDate = new Date(m.receivedAt || m.created_at).toDateString();
+          return today === messageDate;
+        }).length,
+        uniqueCustomers: new Set(localMessages.map(m => m.from)).size,
+        averageConfidence: localMessages.reduce((sum, m) => sum + (m.confidence || 0), 0) / localMessages.length || 0
+      };
+      
+      setStats(stats);
+      
     } catch (err) {
-      setError('Error connecting to server');
+      setError('Error loading messages');
       console.error('Error fetching messages:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch statistics
-  const fetchStats = async () => {
-    try {
-      const response = await fetch('/api/messages/stats');
-      const data = await response.json();
-      
-      if (data.success) {
-        setStats(data.stats);
-      }
-    } catch (err) {
-      console.error('Error fetching stats:', err);
-    }
-  };
-
   // Load data on component mount
   useEffect(() => {
     fetchMessages();
-    fetchStats();
+    
+    // Start auto-sync
+    messageSyncService.startAutoSync(30000);
     
     // Refresh every 30 seconds
     const interval = setInterval(() => {
       fetchMessages();
-      fetchStats();
     }, 30000);
     
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      messageSyncService.stopAutoSync();
+    };
   }, []);
 
   // Filter messages based on filter and search

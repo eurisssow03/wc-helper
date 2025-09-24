@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { processMessageWithAI } from './webhook-ai-processor.js';
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -25,171 +26,31 @@ function initializeGlobalStorage() {
   console.log('📚 Global storage initialized');
 }
 
-// AI Processing Functions
-async function processMessageWithAI(userMessage, fromNumber) {
-  console.log('🧠 Starting AI processing for:', userMessage);
+// AI Processing Functions (now using unified processor)
+async function processWebhookMessage(userMessage, fromNumber) {
+  console.log('🧠 Starting webhook AI processing for:', userMessage);
   
   try {
-    // Fetch real FAQ data from the API
-    let faqs = [];
-    let homestays = [];
+    // Get FAQs from global storage
+    let faqs = global.faqs || [];
+    let homestays = global.homestays || [];
     
-    try {
-      // Get FAQs from global storage or fetch from API
-      if (global.faqs && global.faqs.length > 0) {
-        faqs = global.faqs.filter(faq => faq.is_active === true);
-        console.log(`📚 Using ${faqs.length} active FAQs from global storage`);
-      } else {
-        // Fallback to sample data if no global data
-        faqs = [
-          {
-            question: "What time is check-in?",
-            answer: "Check-in time is 3:00 PM. Please share your booking details for further check in procedure.",
-            tags: ["check-in", "time", "early"],
-            is_active: true
-          },
-          {
-            question: "What time is check-out?",
-            answer: "Check-out time is 12:00 PM. Late check-out may be available upon request, subject to room availability and additional charges.",
-            tags: ["check-out", "time", "late"],
-            is_active: true
-          },
-          {
-            question: "Do you have parking?",
-            answer: "Yes, we offer complimentary parking for all guests. Valet parking is also available for an additional fee. Please inform us of your vehicle details upon check-in.",
-            tags: ["parking", "valet", "complimentary"],
-            is_active: true
-          },
-          {
-            question: "Is Wi-Fi available?",
-            answer: "Yes, complimentary high-speed Wi-Fi is available throughout the homestay. The network name and password will be provided upon check-in.",
-            tags: ["wifi", "internet", "complimentary"],
-            is_active: true
-          }
-        ];
-        console.log(`📚 Using ${faqs.length} sample FAQs as fallback`);
-      }
-      
-      // Get homestays from global storage or use sample data
-      if (global.homestays && global.homestays.length > 0) {
-        homestays = global.homestays;
-        console.log(`🏨 Using ${homestays.length} homestays from global storage`);
-      } else {
-        homestays = [
-          {
-            name: "Trefoil Shah Alam",
-            city: "Shah Alam",
-            checkin_time: "15:00",
-            checkout_time: "12:00",
-            amenities: ["Free Wi-Fi", "Swimming Pool", "Fitness Center", "Restaurant", "Parking"]
-          },
-          {
-            name: "Palas Horizon Cameron",
-            city: "Cameron Highlands", 
-            checkin_time: "14:00",
-            checkout_time: "11:00",
-            amenities: ["Free Wi-Fi", "Mountain View", "Tea Garden Access", "Restaurant", "Parking"]
-          }
-        ];
-        console.log(`🏨 Using ${homestays.length} sample homestays as fallback`);
-      }
-    } catch (error) {
-      console.error('❌ Error fetching data, using fallback:', error);
-      // Use fallback data if API fails
-      faqs = [
-        {
-          question: "What time is check-in?",
-          answer: "Check-in time is 3:00 PM. Please share your booking details for further check in procedure.",
-          tags: ["check-in", "time", "early"],
-          is_active: true
-        }
-      ];
-      homestays = [];
-    }
-
-    // Simple keyword matching (in production, use your RAG system)
-    const query = userMessage.toLowerCase();
-    let bestMatch = null;
-    let confidence = 0;
-
-    console.log(`🔍 Searching through ${faqs.length} active FAQs for: "${userMessage}"`);
-
-    for (const faq of faqs) {
-      // Skip inactive FAQs (this should already be filtered, but double-check)
-      if (!faq.is_active) {
-        console.log(`⏭️ Skipping inactive FAQ: ${faq.question}`);
-        continue;
-      }
-      
-      const questionWords = faq.question.toLowerCase().split(' ');
-      const queryWords = query.split(' ');
-      const tagWords = (faq.tags || []).map(t => t.toLowerCase());
-      
-      let matchScore = 0;
-      
-      // Check question match
-      questionWords.forEach(qWord => {
-        if (queryWords.some(q => q.includes(qWord) || qWord.includes(q))) {
-          matchScore += 2;
-        }
-      });
-      
-      // Check tag match
-      tagWords.forEach(tag => {
-        if (queryWords.some(q => q.includes(tag) || tag.includes(q))) {
-          matchScore += 1;
-        }
-      });
-      
-      // Check direct text match
-      if (query.includes(faq.question.toLowerCase()) || faq.question.toLowerCase().includes(query)) {
-        matchScore += 3;
-      }
-      
-      console.log(`📝 FAQ: "${faq.question}" - Score: ${matchScore}`);
-      
-      if (matchScore > confidence) {
-        confidence = matchScore;
-        bestMatch = faq;
-      }
-    }
-
-    let answer = "Sorry, I couldn't understand your question. We will have someone contact you soon.";
+    console.log(`📚 Using ${faqs.length} total FAQs from global storage`);
+    console.log(`🏨 Using ${homestays.length} homestays from global storage`);
     
-    if (bestMatch && confidence > 0) {
-      answer = bestMatch.answer;
-      console.log(`✅ Best match found: "${bestMatch.question}" (confidence: ${confidence})`);
-      
-      // Add homestay information for general questions
-      if (query.includes('check-in') || query.includes('checkout') || query.includes('amenities')) {
-        answer += "\n\nOur homestays:\n";
-        homestays.forEach(homestay => {
-          answer += `• ${homestay.name} (${homestay.city}): Check-in ${homestay.checkin_time}, Check-out ${homestay.checkout_time}\n`;
-        });
-      }
-    } else {
-      console.log(`❌ No matching FAQ found for: "${userMessage}"`);
-    }
-
-    // Add greeting for first message
-    if (query.includes('hello') || query.includes('hi') || query.includes('help')) {
-      answer = "Hello! Welcome to our homestay service. " + answer;
-    }
-
-    return {
-      answer: answer,
-      confidence: confidence / 10, // Normalize to 0-1
-      matchedQuestion: bestMatch?.question || null,
-      processingTime: Date.now()
-    };
+    // Use the unified AI processor
+    const result = await processMessageWithAI(userMessage, fromNumber, faqs, homestays);
+    
+    return result;
 
   } catch (error) {
-    console.error('❌ AI processing error:', error);
+    console.error('❌ Webhook AI processing error:', error);
     return {
       answer: "Sorry, I'm having trouble processing your message. Please try again or contact us directly.",
       confidence: 0,
       matchedQuestion: null,
-      processingTime: Date.now()
+      processingTime: Date.now(),
+      source: 'WebhookAI'
     };
   }
 }
@@ -386,7 +247,7 @@ app.post('/webhook/whatsapp', async (req, res) => {
                 
                 // Process the message with AI
                 try {
-                  const response = await processMessageWithAI(message.text?.body, message.from);
+                  const response = await processWebhookMessage(message.text?.body, message.from);
                   console.log('🤖 AI Response:', response.answer);
                   
                   // Store the message and AI response for the web app
@@ -687,6 +548,37 @@ app.post('/api/sync/homestays', (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to sync homestay data'
+    });
+  }
+});
+
+// API endpoint to sync messages to web app
+app.post('/api/sync/messages', (req, res) => {
+  try {
+    const { messages } = req.body;
+    
+    if (!Array.isArray(messages)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Messages must be an array'
+      });
+    }
+    
+    // Store messages in global storage
+    global.whatsappMessages = messages;
+    
+    console.log(`📨 Synced ${messages.length} messages to web app`);
+    
+    res.json({
+      success: true,
+      message: `Synced ${messages.length} messages`,
+      total: messages.length
+    });
+  } catch (error) {
+    console.error('❌ Error syncing messages:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to sync message data'
     });
   }
 });

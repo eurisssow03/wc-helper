@@ -1,12 +1,38 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { readLS, STORAGE_KEYS } from '../../services/storage.js';
 import { formatDateTime } from '../../utils/helpers.js';
 import { baseStyles } from '../../utils/styles.js';
+import messageSyncService from '../../services/messageSyncService.js';
 
 export function Dashboard() {
+  const [logs, setLogs] = useState([]);
+  const [messages, setMessages] = useState([]);
+  
   const homestays = readLS(STORAGE_KEYS.homestays, []);
   const faqs = readLS(STORAGE_KEYS.faqs, []);
-  const logs = readLS(STORAGE_KEYS.logs, []);
+  
+  // Load data on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      // Sync messages from webhook
+      await messageSyncService.syncMessagesFromWebhook();
+      
+      // Get latest data
+      const latestLogs = messageSyncService.getLogs();
+      const latestMessages = messageSyncService.getMessages();
+      
+      setLogs(latestLogs);
+      setMessages(latestMessages);
+    };
+    
+    loadData();
+    
+    // Refresh every 30 seconds
+    const interval = setInterval(loadData, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
+  
   const latest = logs.slice(-5).reverse();
   
   return (
@@ -32,6 +58,13 @@ export function Dashboard() {
             fontSize: 28, 
             marginTop: 8
           }}>{logs.length}</div>
+        </div>
+        <div style={baseStyles.card}>
+          <b>Messages</b>
+          <div style={{ 
+            fontSize: 28, 
+            marginTop: 8
+          }}>{messages.length}</div>
         </div>
       </div>
       <div style={baseStyles.card}>
