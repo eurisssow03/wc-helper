@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { readLS, STORAGE_KEYS } from '../../services/storage.js';
 import { formatDateTime } from '../../utils/helpers.js';
 import { baseStyles, breakpoints } from '../../utils/styles.js';
+import messageSyncService from '../../services/messageSyncService.js';
 
 export function LogsPage() {
   const [logs, setLogs] = useState([]);
@@ -19,10 +20,23 @@ export function LogsPage() {
   const [itemsPerPage] = useState(20);
   const [showAIProcessing, setShowAIProcessing] = useState(false);
 
-  // Load logs on component mount
+  // Load logs on component mount and sync from webhook
   useEffect(() => {
-    const allLogs = readLS(STORAGE_KEYS.logs, []);
-    setLogs(allLogs);
+    const loadLogs = async () => {
+      // Sync messages from webhook to get latest logs
+      await messageSyncService.syncMessagesFromWebhook();
+      
+      // Get latest logs from localStorage
+      const allLogs = readLS(STORAGE_KEYS.logs, []);
+      setLogs(allLogs);
+    };
+    
+    loadLogs();
+    
+    // Refresh every 30 seconds
+    const interval = setInterval(loadLogs, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   // Filter and sort logs

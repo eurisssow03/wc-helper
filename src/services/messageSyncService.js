@@ -95,6 +95,34 @@ class MessageSyncService {
         if (newMessages.length > 0) {
           const updatedMessages = [...newMessages, ...existingMessages];
           writeLS(STORAGE_KEYS.messages, updatedMessages);
+          
+          // Also create log entries for webhook messages
+          const existingLogs = readLS(STORAGE_KEYS.logs, []);
+          const newLogs = newMessages.map(msg => ({
+            id: `log_${msg.id}_${Date.now()}`,
+            created_at: msg.receivedAt || new Date().toISOString(),
+            channel: 'Webhook',
+            incoming_text: msg.text,
+            matched_question: msg.matchedQuestion,
+            confidence: msg.confidence || 0,
+            answer: msg.aiResponse,
+            processing_time: msg.processingTime || 0,
+            source: msg.source || 'webhook',
+            ai_processing: msg.ai_processing || null
+          }));
+          
+          // Filter out duplicate logs
+          const uniqueNewLogs = newLogs.filter(newLog => 
+            !existingLogs.some(existing => existing.incoming_text === newLog.incoming_text && 
+                                         existing.created_at === newLog.created_at)
+          );
+          
+          if (uniqueNewLogs.length > 0) {
+            const updatedLogs = [...uniqueNewLogs, ...existingLogs];
+            writeLS(STORAGE_KEYS.logs, updatedLogs);
+            console.log('📝 Created', uniqueNewLogs.length, 'log entries from webhook messages');
+          }
+          
           console.log('📨 Synced', newMessages.length, 'new messages from webhook');
         }
         

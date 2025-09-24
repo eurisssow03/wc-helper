@@ -66,26 +66,32 @@ function rerankWithSignals({ query, homestays, candidates }) {
 }
 
 // Get fallback answer
-function getFallbackAnswer(userMessage) {
-  const fallbackMessages = {
-    en: "Sorry, I couldn't understand your question. We will have someone contact you soon.",
-    zh: "抱歉，我没有理解您的问题。我们会尽快安排人员联系您。"
+function getFallbackAnswer(userMessage, responseTemplates = null) {
+  // Use provided response templates or default fallback messages
+  const defaultTemplates = {
+    en: {
+      fallback: "Sorry, I couldn't understand your question. We will have someone contact you soon.",
+      greeting: "Hello! Welcome to our homestay service. "
+    },
+    zh: {
+      fallback: "抱歉，我没有理解您的问题。我们会尽快安排人员联系您。",
+      greeting: "您好！欢迎咨询我们的民宿服务。"
+    }
   };
+
+  const templates = responseTemplates || defaultTemplates;
 
   // Simple language detection
   const isChinese = /[\u4e00-\u9fa5]/.test(userMessage);
   const language = isChinese ? 'zh' : 'en';
   
-  let answer = fallbackMessages[language] || fallbackMessages.en;
+  let answer = templates[language]?.fallback || templates.en?.fallback || defaultTemplates.en.fallback;
 
   // Add greeting for first message
   const greetingKeywords = ['hello', 'hi', 'help', '你好', '嗨', '帮助'];
   if (greetingKeywords.some(keyword => userMessage.toLowerCase().includes(keyword))) {
-    const greetings = {
-      en: "Hello! Welcome to our homestay service. ",
-      zh: "您好！欢迎咨询我们的民宿服务。"
-    };
-    answer = greetings[language] + answer;
+    const greeting = templates[language]?.greeting || templates.en?.greeting || defaultTemplates.en.greeting;
+    answer = greeting + answer;
   }
 
   return answer;

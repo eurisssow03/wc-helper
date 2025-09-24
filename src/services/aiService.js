@@ -372,25 +372,25 @@ class AIService {
 
   // Get fallback answer
   getFallbackAnswer(userMessage, contextItems) {
-    const fallbackMessages = {
-      en: "Sorry, I couldn't understand your question. We will have someone contact you soon.",
-      zh: "抱歉，我没有理解您的问题。我们会尽快安排人员联系您。"
-    };
-
+    // Get fallback messages from settings
+    const responseTemplates = this.settings.aiRules?.responseTemplates || {};
+    
     // Simple language detection
     const isChinese = /[\u4e00-\u9fa5]/.test(userMessage);
     const language = isChinese ? 'zh' : 'en';
     
-    let answer = fallbackMessages[language] || fallbackMessages.en;
+    // Get fallback message from settings, with fallback to default
+    let answer = responseTemplates[language]?.fallback || 
+                 responseTemplates.en?.fallback || 
+                 "Sorry, I couldn't understand your question. We will have someone contact you soon.";
 
     // Add greeting for first message
     const greetingKeywords = ['hello', 'hi', 'help', '你好', '嗨', '帮助'];
     if (greetingKeywords.some(keyword => userMessage.toLowerCase().includes(keyword))) {
-      const greetings = {
-        en: "Hello! Welcome to our homestay service. ",
-        zh: "您好！欢迎咨询我们的民宿服务。"
-      };
-      answer = greetings[language] + answer;
+      const greeting = responseTemplates[language]?.greeting || 
+                      responseTemplates.en?.greeting || 
+                      "Hello! Welcome to our homestay service. ";
+      answer = greeting + answer;
     }
 
     return answer;
@@ -438,9 +438,13 @@ class AIService {
     } catch (error) {
       console.error('❌ Error in processAndLog:', error);
       
-      // Return a fallback response
+      // Return a fallback response using settings
+      const responseTemplates = this.settings.aiRules?.responseTemplates || {};
+      const fallbackMessage = responseTemplates.en?.fallback || 
+                             'I apologize, but I\'m experiencing technical difficulties. Please try again later.';
+      
       const fallbackResponse = {
-        answer: 'I apologize, but I\'m experiencing technical difficulties. Please try again later.',
+        answer: fallbackMessage,
         confidence: 0,
         matchedQuestion: null,
         processingTime: 0,
