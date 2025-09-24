@@ -164,14 +164,35 @@ async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = [
     confidence,
     matchedQuestion,
     processingTime,
-    source: 'WebhookAI'
+    source: 'WebhookAI',
+    processingDetails: {
+      totalFaqs: faqs.length,
+      activeFaqs: activeFAQs.length,
+      candidatesFound: candidates.length,
+      topCandidates: candidates.slice(0, 5).map(c => ({
+        question: c.faq.question,
+        similarity: c.sim,
+        finalScore: c.final,
+        isActive: c.faq.is_active
+      })),
+      confidenceThreshold: 0.6, // Default threshold for webhook
+      finalDecision: confidence > 0.6 ? 'FAQ answer (high confidence)' : 'Fallback (low confidence)',
+      contextItems: [],
+      processingSteps: [
+        'FAQ filtering completed',
+        'Similarity search completed',
+        'Reranking completed',
+        confidence > 0.6 ? 'FAQ answer selected' : 'Fallback answer selected'
+      ]
+    }
   };
 
   console.log('🤖 Webhook AI: Final result:', {
     answer: answer.substring(0, 100) + '...',
     confidence,
     matchedQuestion,
-    processingTime
+    processingTime,
+    finalDecision: result.processingDetails.finalDecision
   });
 
   return result;

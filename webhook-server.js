@@ -262,7 +262,8 @@ app.post('/webhook/whatsapp', async (req, res) => {
                     matchedQuestion: response.matchedQuestion,
                     processingTime: response.processingTime,
                     status: 'processed',
-                    source: 'webhook'
+                    source: 'webhook',
+                    ai_processing: response.processingDetails || null
                   });
                   
                   // Send WhatsApp reply

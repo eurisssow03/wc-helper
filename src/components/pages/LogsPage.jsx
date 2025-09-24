@@ -17,6 +17,7 @@ export function LogsPage() {
   const [selectedLog, setSelectedLog] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(20);
+  const [showAIProcessing, setShowAIProcessing] = useState(false);
 
   // Load logs on component mount
   useEffect(() => {
@@ -362,16 +363,29 @@ export function LogsPage() {
                       {log.processing_time ? `${log.processing_time}ms` : '—'}
                     </td>
                     <td style={baseStyles.td}>
-                      <button
-                        onClick={() => setSelectedLog(log)}
-                        style={{
-                          ...baseStyles.btnGhost,
-                          fontSize: 12,
-                          padding: '4px 8px'
-                        }}
-                      >
-                        View Details
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <button
+                          onClick={() => setSelectedLog(log)}
+                          style={{
+                            ...baseStyles.btnGhost,
+                            fontSize: 12,
+                            padding: '4px 8px'
+                          }}
+                        >
+                          View Details
+                        </button>
+                        {log.ai_processing && (
+                          <span style={{
+                            ...baseStyles.badge,
+                            backgroundColor: '#007bff',
+                            color: 'white',
+                            fontSize: 10,
+                            padding: '2px 6px'
+                          }}>
+                            AI Details
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -542,6 +556,134 @@ export function LogsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* AI Processing Details */}
+              {selectedLog.ai_processing && (
+                <div style={{ marginTop: 24 }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    marginBottom: 16 
+                  }}>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>AI Processing Details</h3>
+                    <button
+                      onClick={() => setShowAIProcessing(!showAIProcessing)}
+                      style={{
+                        ...baseStyles.btnGhost,
+                        fontSize: 12,
+                        padding: '6px 12px'
+                      }}
+                    >
+                      {showAIProcessing ? 'Hide Details' : 'Show Details'}
+                    </button>
+                  </div>
+
+                  {showAIProcessing && (
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+                      gap: 16,
+                      marginBottom: 16
+                    }}>
+                      <div>
+                        <label style={{ ...baseStyles.label, marginBottom: 4 }}>Total FAQs</label>
+                        <div style={{ padding: 8, backgroundColor: '#e3f2fd', borderRadius: 6 }}>
+                          {selectedLog.ai_processing.total_faqs}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label style={{ ...baseStyles.label, marginBottom: 4 }}>Active FAQs</label>
+                        <div style={{ padding: 8, backgroundColor: '#e8f5e8', borderRadius: 6 }}>
+                          {selectedLog.ai_processing.active_faqs}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label style={{ ...baseStyles.label, marginBottom: 4 }}>Candidates Found</label>
+                        <div style={{ padding: 8, backgroundColor: '#fff3e0', borderRadius: 6 }}>
+                          {selectedLog.ai_processing.candidates_found}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label style={{ ...baseStyles.label, marginBottom: 4 }}>Confidence Threshold</label>
+                        <div style={{ padding: 8, backgroundColor: '#f3e5f5', borderRadius: 6 }}>
+                          {(selectedLog.ai_processing.confidence_threshold * 100).toFixed(1)}%
+                        </div>
+                      </div>
+
+                      <div>
+                        <label style={{ ...baseStyles.label, marginBottom: 4 }}>Final Decision</label>
+                        <div style={{ padding: 8, backgroundColor: '#e0f2f1', borderRadius: 6 }}>
+                          {selectedLog.ai_processing.final_decision}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Top Candidates */}
+                  {showAIProcessing && selectedLog.ai_processing.top_candidates && selectedLog.ai_processing.top_candidates.length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ ...baseStyles.label, marginBottom: 8 }}>Top Candidates</label>
+                      <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                        {selectedLog.ai_processing.top_candidates.map((candidate, index) => (
+                          <div key={index} style={{
+                            padding: 12,
+                            backgroundColor: index === 0 ? '#e8f5e8' : '#f8f9fa',
+                            borderRadius: 6,
+                            marginBottom: 8,
+                            border: index === 0 ? '2px solid #4caf50' : '1px solid #e9ecef'
+                          }}>
+                            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                              #{index + 1} {candidate.question}
+                            </div>
+                            <div style={{ fontSize: 12, color: '#6c757d', display: 'flex', gap: 16 }}>
+                              <span>Similarity: {(candidate.similarity * 100).toFixed(1)}%</span>
+                              <span>Final Score: {(candidate.finalScore * 100).toFixed(1)}%</span>
+                              <span>Active: {candidate.isActive ? 'Yes' : 'No'}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Processing Steps */}
+                  {showAIProcessing && selectedLog.ai_processing.processing_steps && selectedLog.ai_processing.processing_steps.length > 0 && (
+                    <div>
+                      <label style={{ ...baseStyles.label, marginBottom: 8 }}>Processing Steps</label>
+                      <div style={{ padding: 12, backgroundColor: '#f8f9fa', borderRadius: 6 }}>
+                        {selectedLog.ai_processing.processing_steps.map((step, index) => (
+                          <div key={index} style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            marginBottom: index < selectedLog.ai_processing.processing_steps.length - 1 ? 8 : 0
+                          }}>
+                            <div style={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: '50%',
+                              backgroundColor: '#007bff',
+                              color: 'white',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 12,
+                              marginRight: 12,
+                              flexShrink: 0
+                            }}>
+                              {index + 1}
+                            </div>
+                            <span style={{ fontSize: 14 }}>{step}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -42,6 +42,18 @@ class AIService {
     const activeFAQs = this.getActiveFAQs();
     let candidates = [];
     
+    // Initialize processing details for logging
+    const processingDetails = {
+      totalFaqs: this.faqs.length,
+      activeFaqs: activeFAQs.length,
+      candidatesFound: 0,
+      topCandidates: [],
+      confidenceThreshold: this.settings.confidenceThreshold || 0.6,
+      finalDecision: 'unknown',
+      contextItems: [],
+      processingSteps: []
+    };
+    
     try {
       // Use embedding-based search if available
       if (this.settings.aiProvider && this.settings.aiProvider !== 'LocalMock') {
@@ -71,6 +83,10 @@ class AIService {
           .slice(0, 10);
           
         console.log('🤖 Candidates found:', candidates.length);
+        
+        // Update processing details
+        processingDetails.candidatesFound = candidates.length;
+        processingDetails.processingSteps.push('Embedding-based search completed');
       } else {
         // Use simple similarity for LocalMock or when no AI provider
         candidates = activeFAQs
@@ -84,6 +100,10 @@ class AIService {
           .slice(0, 10);
           
         console.log('🤖 Simple candidates found:', candidates.length);
+        
+        // Update processing details
+        processingDetails.candidatesFound = candidates.length;
+        processingDetails.processingSteps.push('Simple similarity search completed');
       }
     } catch (error) {
       console.error('🤖 Embedding search error:', error);
@@ -99,6 +119,10 @@ class AIService {
         .slice(0, 10);
         
       console.log('🤖 Fallback candidates found:', candidates.length);
+      
+      // Update processing details
+      processingDetails.candidatesFound = candidates.length;
+      processingDetails.processingSteps.push('Fallback similarity search completed');
     }
 
     // Rerank with signals
@@ -113,6 +137,15 @@ class AIService {
       question: r.faq.question, 
       final: r.final 
     })));
+    
+    // Update processing details with top candidates
+    processingDetails.topCandidates = reranked.slice(0, 5).map(r => ({
+      question: r.faq.question,
+      similarity: r.sim,
+      finalScore: r.final,
+      isActive: r.faq.is_active
+    }));
+    processingDetails.processingSteps.push('Reranking with signals completed');
 
     const processingTime = Date.now() - startTime;
 
@@ -138,6 +171,10 @@ class AIService {
     const confidenceThreshold = this.settings.confidenceThreshold || 0.6;
     console.log('🤖 Using confidence threshold:', confidenceThreshold);
     
+    // Update processing details
+    processingDetails.confidenceThreshold = confidenceThreshold;
+    processingDetails.contextItems = contextItems;
+    
     // Use chat model if available and confidence is high enough
     if (this.settings.aiProvider && this.settings.aiProvider !== 'LocalMock' && confidence > confidenceThreshold) {
       try {
@@ -149,18 +186,26 @@ class AIService {
           homestays: this.homestays
         });
         console.log('🤖 Chat model response generated (confidence > threshold)');
+        processingDetails.finalDecision = 'Chat model (high confidence)';
+        processingDetails.processingSteps.push('Chat model response generated');
       } catch (error) {
         console.error('🤖 Chat model error:', error);
         answer = this.getFallbackAnswer(userMessage, contextItems);
+        processingDetails.finalDecision = 'Fallback (chat model error)';
+        processingDetails.processingSteps.push('Chat model failed, using fallback');
       }
     } else {
       // Use simple answer or fallback based on confidence threshold
       if (bestMatch && confidence > confidenceThreshold) {
         answer = bestMatch.faq.answer;
         console.log('🤖 Using FAQ answer (confidence > threshold)');
+        processingDetails.finalDecision = 'FAQ answer (high confidence)';
+        processingDetails.processingSteps.push('FAQ answer selected');
       } else {
         answer = this.getFallbackAnswer(userMessage, contextItems);
         console.log('🤖 Using fallback answer (confidence < threshold)');
+        processingDetails.finalDecision = 'Fallback (low confidence)';
+        processingDetails.processingSteps.push('Fallback answer selected');
       }
     }
 
@@ -170,14 +215,16 @@ class AIService {
       matchedQuestion,
       processingTime,
       contextItems,
-      source: 'AIService'
+      source: 'AIService',
+      processingDetails
     };
 
     console.log('🤖 Final result:', {
       answer: answer.substring(0, 100) + '...',
       confidence,
       matchedQuestion,
-      processingTime
+      processingTime,
+      finalDecision: processingDetails.finalDecision
     });
 
     return result;
@@ -209,8 +256,8 @@ class AIService {
     return answer;
   }
 
-  // Log interaction to localStorage
-  logInteraction(userMessage, response, channel = 'AIService') {
+  // Log interaction to localStorage with detailed AI processing info
+  logInteraction(userMessage, response, channel = 'AIService', processingDetails = {}) {
     const logEntry = {
       id: Date.now(),
       created_at: nowISO(),
@@ -220,21 +267,32 @@ class AIService {
       confidence: response.confidence,
       answer: response.answer,
       processing_time: response.processingTime,
-      source: response.source
+      source: response.source,
+      // Detailed AI processing information
+      ai_processing: {
+        total_faqs: processingDetails.totalFaqs || 0,
+        active_faqs: processingDetails.activeFaqs || 0,
+        candidates_found: processingDetails.candidatesFound || 0,
+        top_candidates: processingDetails.topCandidates || [],
+        confidence_threshold: processingDetails.confidenceThreshold || 0.6,
+        final_decision: processingDetails.finalDecision || 'unknown',
+        context_items: processingDetails.contextItems || [],
+        processing_steps: processingDetails.processingSteps || []
+      }
     };
 
     const logs = readLS(STORAGE_KEYS.logs, []);
     logs.push(logEntry);
     writeLS(STORAGE_KEYS.logs, logs);
     
-    console.log('🤖 Interaction logged:', logEntry.id);
+    console.log('🤖 Interaction logged with AI details:', logEntry.id);
     return logEntry;
   }
 
   // Process message and log (convenience method)
   async processAndLog(userMessage, channel = 'AIService') {
     const response = await this.processMessage(userMessage);
-    const logEntry = this.logInteraction(userMessage, response, channel);
+    const logEntry = this.logInteraction(userMessage, response, channel, response.processingDetails);
     return { ...response, logEntry };
   }
 }
