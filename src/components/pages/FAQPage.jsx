@@ -42,11 +42,42 @@ export function FAQPage({ onSaved }) {
   
   const startEdit = (idx) => setEditing({ ...list[idx], __idx: idx });
 
+  // Sync FAQ data with webhook server
+  const syncWithWebhook = async (faqData) => {
+    try {
+      const webhookUrl = process.env.REACT_APP_WEBHOOK_URL || 'http://localhost:3001';
+      const response = await fetch(`${webhookUrl}/api/sync/faqs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ faqs: faqData })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ FAQs synced with webhook server:', result);
+      } else {
+        console.error('❌ Failed to sync FAQs with webhook server');
+      }
+    } catch (error) {
+      console.error('❌ Error syncing FAQs with webhook server:', error);
+    }
+  };
+
+  // Sync with webhook server when component loads
+  React.useEffect(() => {
+    if (list.length > 0) {
+      syncWithWebhook(list);
+    }
+  }, []); // Only run once on mount
+
   const toggleActive = (idx) => {
     const next = [...list];
     next[idx] = { ...next[idx], is_active: !next[idx].is_active, updated_by: session.email, updated_at: nowISO() };
     setList(next);
     writeLS(STORAGE_KEYS.faqs, next);
+    syncWithWebhook(next);
     onSaved?.();
   };
 
@@ -71,9 +102,10 @@ export function FAQPage({ onSaved }) {
     } else if (typeof editing.__idx === "number") { 
       next[editing.__idx] = payload; 
     }
-    setList(next); 
-    writeLS(STORAGE_KEYS.faqs, next); 
-    setEditing(null); 
+    setList(next);
+    writeLS(STORAGE_KEYS.faqs, next);
+    syncWithWebhook(next);
+    setEditing(null);
     onSaved?.();
   };
 

@@ -14,62 +14,100 @@ async function processMessageWithAI(userMessage, fromNumber) {
   console.log('🧠 Starting AI processing for:', userMessage);
   
   try {
-    // Load sample data (in production, this would come from a database)
-    const sampleFAQs = [
-      {
-        question: "What time is check-in?",
-        answer: "Check-in time is 3:00 PM. Please share your booking details for further check in procedure.",
-        tags: ["check-in", "time", "early"],
-        is_active: true
-      },
-      {
-        question: "What time is check-out?",
-        answer: "Check-out time is 12:00 PM. Late check-out may be available upon request, subject to room availability and additional charges.",
-        tags: ["check-out", "time", "late"],
-        is_active: true
-      },
-      {
-        question: "Do you have parking?",
-        answer: "Yes, we offer complimentary parking for all guests. Valet parking is also available for an additional fee. Please inform us of your vehicle details upon check-in.",
-        tags: ["parking", "valet", "complimentary"],
-        is_active: true
-      },
-      {
-        question: "Is Wi-Fi available?",
-        answer: "Yes, complimentary high-speed Wi-Fi is available throughout the homestay. The network name and password will be provided upon check-in.",
-        tags: ["wifi", "internet", "complimentary"],
-        is_active: true
+    // Fetch real FAQ data from the API
+    let faqs = [];
+    let homestays = [];
+    
+    try {
+      // Get FAQs from global storage or fetch from API
+      if (global.faqs && global.faqs.length > 0) {
+        faqs = global.faqs.filter(faq => faq.is_active === true);
+        console.log(`📚 Using ${faqs.length} active FAQs from global storage`);
+      } else {
+        // Fallback to sample data if no global data
+        faqs = [
+          {
+            question: "What time is check-in?",
+            answer: "Check-in time is 3:00 PM. Please share your booking details for further check in procedure.",
+            tags: ["check-in", "time", "early"],
+            is_active: true
+          },
+          {
+            question: "What time is check-out?",
+            answer: "Check-out time is 12:00 PM. Late check-out may be available upon request, subject to room availability and additional charges.",
+            tags: ["check-out", "time", "late"],
+            is_active: true
+          },
+          {
+            question: "Do you have parking?",
+            answer: "Yes, we offer complimentary parking for all guests. Valet parking is also available for an additional fee. Please inform us of your vehicle details upon check-in.",
+            tags: ["parking", "valet", "complimentary"],
+            is_active: true
+          },
+          {
+            question: "Is Wi-Fi available?",
+            answer: "Yes, complimentary high-speed Wi-Fi is available throughout the homestay. The network name and password will be provided upon check-in.",
+            tags: ["wifi", "internet", "complimentary"],
+            is_active: true
+          }
+        ];
+        console.log(`📚 Using ${faqs.length} sample FAQs as fallback`);
       }
-    ];
-
-    const sampleHomestays = [
-      {
-        name: "Trefoil Shah Alam",
-        city: "Shah Alam",
-        checkin_time: "15:00",
-        checkout_time: "12:00",
-        amenities: ["Free Wi-Fi", "Swimming Pool", "Fitness Center", "Restaurant", "Parking"]
-      },
-      {
-        name: "Palas Horizon Cameron",
-        city: "Cameron Highlands", 
-        checkin_time: "14:00",
-        checkout_time: "11:00",
-        amenities: ["Free Wi-Fi", "Mountain View", "Tea Garden Access", "Restaurant", "Parking"]
+      
+      // Get homestays from global storage or use sample data
+      if (global.homestays && global.homestays.length > 0) {
+        homestays = global.homestays;
+        console.log(`🏨 Using ${homestays.length} homestays from global storage`);
+      } else {
+        homestays = [
+          {
+            name: "Trefoil Shah Alam",
+            city: "Shah Alam",
+            checkin_time: "15:00",
+            checkout_time: "12:00",
+            amenities: ["Free Wi-Fi", "Swimming Pool", "Fitness Center", "Restaurant", "Parking"]
+          },
+          {
+            name: "Palas Horizon Cameron",
+            city: "Cameron Highlands", 
+            checkin_time: "14:00",
+            checkout_time: "11:00",
+            amenities: ["Free Wi-Fi", "Mountain View", "Tea Garden Access", "Restaurant", "Parking"]
+          }
+        ];
+        console.log(`🏨 Using ${homestays.length} sample homestays as fallback`);
       }
-    ];
+    } catch (error) {
+      console.error('❌ Error fetching data, using fallback:', error);
+      // Use fallback data if API fails
+      faqs = [
+        {
+          question: "What time is check-in?",
+          answer: "Check-in time is 3:00 PM. Please share your booking details for further check in procedure.",
+          tags: ["check-in", "time", "early"],
+          is_active: true
+        }
+      ];
+      homestays = [];
+    }
 
     // Simple keyword matching (in production, use your RAG system)
     const query = userMessage.toLowerCase();
     let bestMatch = null;
     let confidence = 0;
 
-    for (const faq of sampleFAQs) {
-      if (!faq.is_active) continue;
+    console.log(`🔍 Searching through ${faqs.length} active FAQs for: "${userMessage}"`);
+
+    for (const faq of faqs) {
+      // Skip inactive FAQs (this should already be filtered, but double-check)
+      if (!faq.is_active) {
+        console.log(`⏭️ Skipping inactive FAQ: ${faq.question}`);
+        continue;
+      }
       
       const questionWords = faq.question.toLowerCase().split(' ');
       const queryWords = query.split(' ');
-      const tagWords = faq.tags.map(t => t.toLowerCase());
+      const tagWords = (faq.tags || []).map(t => t.toLowerCase());
       
       let matchScore = 0;
       
@@ -92,6 +130,8 @@ async function processMessageWithAI(userMessage, fromNumber) {
         matchScore += 3;
       }
       
+      console.log(`📝 FAQ: "${faq.question}" - Score: ${matchScore}`);
+      
       if (matchScore > confidence) {
         confidence = matchScore;
         bestMatch = faq;
@@ -102,14 +142,17 @@ async function processMessageWithAI(userMessage, fromNumber) {
     
     if (bestMatch && confidence > 0) {
       answer = bestMatch.answer;
+      console.log(`✅ Best match found: "${bestMatch.question}" (confidence: ${confidence})`);
       
       // Add homestay information for general questions
       if (query.includes('check-in') || query.includes('checkout') || query.includes('amenities')) {
         answer += "\n\nOur homestays:\n";
-        sampleHomestays.forEach(homestay => {
+        homestays.forEach(homestay => {
           answer += `• ${homestay.name} (${homestay.city}): Check-in ${homestay.checkin_time}, Check-out ${homestay.checkout_time}\n`;
         });
       }
+    } else {
+      console.log(`❌ No matching FAQ found for: "${userMessage}"`);
     }
 
     // Add greeting for first message
@@ -488,6 +531,113 @@ app.get('/api/messages/stats', (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch message statistics'
+    });
+  }
+});
+
+// API endpoint to get FAQ data
+app.get('/api/faqs', (req, res) => {
+  try {
+    // In production, this would come from a database
+    // For now, we'll use the same sample data structure as the web app
+    const faqs = global.faqs || [];
+    
+    // Filter only active FAQs
+    const activeFAQs = faqs.filter(faq => faq.is_active === true);
+    
+    res.json({
+      success: true,
+      faqs: activeFAQs,
+      total: activeFAQs.length
+    });
+  } catch (error) {
+    console.error('❌ Error fetching FAQs:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch FAQ data'
+    });
+  }
+});
+
+// API endpoint to get homestay data
+app.get('/api/homestays', (req, res) => {
+  try {
+    const homestays = global.homestays || [];
+    
+    res.json({
+      success: true,
+      homestays: homestays,
+      total: homestays.length
+    });
+  } catch (error) {
+    console.error('❌ Error fetching homestays:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch homestay data'
+    });
+  }
+});
+
+// API endpoint to sync FAQ data from web app
+app.post('/api/sync/faqs', (req, res) => {
+  try {
+    const { faqs } = req.body;
+    
+    if (!Array.isArray(faqs)) {
+      return res.status(400).json({
+        success: false,
+        error: 'FAQs must be an array'
+      });
+    }
+    
+    // Store FAQs in global storage
+    global.faqs = faqs;
+    
+    const activeCount = faqs.filter(faq => faq.is_active === true).length;
+    console.log(`📚 Synced ${faqs.length} FAQs (${activeCount} active) from web app`);
+    
+    res.json({
+      success: true,
+      message: `Synced ${faqs.length} FAQs`,
+      active: activeCount,
+      total: faqs.length
+    });
+  } catch (error) {
+    console.error('❌ Error syncing FAQs:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to sync FAQ data'
+    });
+  }
+});
+
+// API endpoint to sync homestay data from web app
+app.post('/api/sync/homestays', (req, res) => {
+  try {
+    const { homestays } = req.body;
+    
+    if (!Array.isArray(homestays)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Homestays must be an array'
+      });
+    }
+    
+    // Store homestays in global storage
+    global.homestays = homestays;
+    
+    console.log(`🏨 Synced ${homestays.length} homestays from web app`);
+    
+    res.json({
+      success: true,
+      message: `Synced ${homestays.length} homestays`,
+      total: homestays.length
+    });
+  } catch (error) {
+    console.error('❌ Error syncing homestays:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to sync homestay data'
     });
   }
 });
