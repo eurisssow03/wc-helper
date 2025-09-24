@@ -65,6 +65,84 @@ function rerankWithSignals({ query, homestays, candidates }) {
   }).sort((a, b) => b.final - a.final);
 }
 
+// Tag-based matching function (highest priority)
+function tagBasedMatch(query, faq) {
+  if (!faq.is_active || !faq.tags || faq.tags.length === 0) {
+    return { matched: false, score: 0, matchedTags: [] };
+  }
+  
+  const queryLower = query.toLowerCase();
+  const queryTokens = tokenize(query);
+  const matchedTags = [];
+  let totalScore = 0;
+  
+  // Check each tag for matches
+  faq.tags.forEach(tag => {
+    const tagLower = tag.toLowerCase();
+    
+    // Exact tag match (highest score)
+    if (queryLower === tagLower) {
+      matchedTags.push(tag);
+      totalScore += 1.0;
+    }
+    // Tag contains query (high score)
+    else if (tagLower.includes(queryLower)) {
+      matchedTags.push(tag);
+      totalScore += 0.8;
+    }
+    // Query contains tag (medium-high score)
+    else if (queryLower.includes(tagLower)) {
+      matchedTags.push(tag);
+      totalScore += 0.7;
+    }
+    // Partial token match (medium score)
+    else {
+      const tagTokens = tokenize(tag);
+      const tokenSimilarity = jaccardSimilarity(queryTokens, tagTokens);
+      if (tokenSimilarity > 0.3) {
+        matchedTags.push(tag);
+        totalScore += tokenSimilarity * 0.6;
+      }
+    }
+  });
+  
+  // Normalize score (max 1.0)
+  const normalizedScore = Math.min(1.0, totalScore);
+  
+  return {
+    matched: matchedTags.length > 0,
+    score: normalizedScore,
+    matchedTags: matchedTags
+  };
+}
+
+// Combined matching: Tags first, then question similarity
+function calculateCombinedSimilarity(userMessage, faq) {
+  // First priority: Tag-based matching
+  const tagMatch = tagBasedMatch(userMessage, faq);
+  
+  if (tagMatch.matched) {
+    console.log(`🏷️ Tag match for "${faq.question}": ${tagMatch.matchedTags.join(', ')} (score: ${tagMatch.score.toFixed(3)})`);
+    return {
+      score: tagMatch.score,
+      method: 'tag',
+      matchedTags: tagMatch.matchedTags,
+      details: `Tag match: ${tagMatch.matchedTags.join(', ')}`
+    };
+  }
+  
+  // Second priority: Question similarity
+  const questionSimilarity = simpleSimilarityScore(userMessage, faq);
+  console.log(`❓ Question similarity for "${faq.question}": ${questionSimilarity.toFixed(3)}`);
+  
+  return {
+    score: questionSimilarity,
+    method: 'question',
+    matchedTags: [],
+    details: 'Question similarity'
+  };
+}
+
 // Get fallback answer
 function getFallbackAnswer(userMessage, responseTemplates = null) {
   // Use provided response templates or default fallback messages
@@ -119,12 +197,12 @@ async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = [
     };
   }
   
-  // Get candidates using simple similarity (matching web app logic)
+  // Get candidates using combined similarity (tags first, then question)
   let candidates = activeFAQs
     .map(faq => {
-      const sim = simpleSimilarityScore(userMessage, faq);
-      console.log(`🤖 FAQ "${faq.question}" - similarity: ${sim}`);
-      return { faq, sim };
+      const combinedMatch = calculateCombinedSimilarity(userMessage, faq);
+      console.log(`🤖 FAQ "${faq.question}" - similarity: ${combinedMatch.score} (${combinedMatch.method})`);
+      return { faq, sim: combinedMatch.score, matchMethod: combinedMatch.method };
     })
     .filter(c => c.sim > 0)
     .sort((a, b) => b.sim - a.sim)
@@ -156,13 +234,13 @@ async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = [
 
   let answer;
   
-  // Use FAQ answer if confidence is high enough
-  if (bestMatch && confidence > 0.5) {
+  // Always use the best match if available, regardless of confidence threshold
+  if (bestMatch && confidence > 0) {
     answer = bestMatch.faq.answer;
-    console.log('🤖 Webhook AI: Using FAQ answer');
+    console.log(`🤖 Webhook AI: Using FAQ answer (confidence: ${confidence.toFixed(3)})`);
   } else {
     answer = getFallbackAnswer(userMessage);
-    console.log('🤖 Webhook AI: Using fallback answer');
+    console.log('🤖 Webhook AI: Using fallback answer (no matches found)');
   }
 
   const result = {

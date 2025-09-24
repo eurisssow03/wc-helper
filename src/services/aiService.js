@@ -4,7 +4,7 @@
  */
 
 import { readLS, writeLS, STORAGE_KEYS } from '../services/storage.js';
-import { simpleSimilarityScore } from '../utils/nlp.js';
+import { simpleSimilarityScore, tagBasedMatch } from '../utils/nlp.js';
 import { rerankWithSignals, callChatModel } from '../utils/rag.js';
 import { buildEmbedding, cosineSim } from '../utils/embedding.js';
 import { nowISO } from '../utils/helpers.js';
@@ -97,6 +97,33 @@ class AIService {
     return this.faqs.filter(faq => faq.is_active === true);
   }
 
+  // Combined matching: Tags first, then question similarity
+  calculateCombinedSimilarity(userMessage, faq) {
+    // First priority: Tag-based matching
+    const tagMatch = tagBasedMatch(userMessage, faq);
+    
+    if (tagMatch.matched) {
+      console.log(`🏷️ Tag match for "${faq.question}": ${tagMatch.matchedTags.join(', ')} (score: ${tagMatch.score.toFixed(3)})`);
+      return {
+        score: tagMatch.score,
+        method: 'tag',
+        matchedTags: tagMatch.matchedTags,
+        details: `Tag match: ${tagMatch.matchedTags.join(', ')}`
+      };
+    }
+    
+    // Second priority: Question similarity
+    const questionSimilarity = simpleSimilarityScore(userMessage, faq);
+    console.log(`❓ Question similarity for "${faq.question}": ${questionSimilarity.toFixed(3)}`);
+    
+    return {
+      score: questionSimilarity,
+      method: 'question',
+      matchedTags: [],
+      details: 'Question similarity'
+    };
+  }
+
   // Categorize confidence level
   getConfidenceCategory(confidence) {
     if (confidence >= 0.8) return 'High';
@@ -143,7 +170,7 @@ class AIService {
       activeFaqs: activeFAQs.length,
       candidatesFound: 0,
       topCandidates: [],
-      confidenceThreshold: this.settings.confidenceThreshold || 0.6,
+      confidenceThreshold: 'No threshold (using best match)',
       similarityThreshold: this.settings.similarityThreshold || 0.3,
       finalDecision: 'unknown',
       contextItems: [],
@@ -163,18 +190,21 @@ class AIService {
         candidates = await Promise.all(
           activeFAQs.map(async (faq) => {
             let similarity = 0;
+            let matchMethod = 'embedding';
             
             if (faq.embedding && Array.isArray(faq.embedding) && faq.embedding.length > 0) {
               // Use stored embedding if available
               similarity = cosineSim(queryEmbedding, faq.embedding);
               console.log(`🤖 FAQ "${faq.question}" - Embedding similarity: ${similarity}`);
             } else {
-              // Fallback to simple similarity if no embedding
-              similarity = simpleSimilarityScore(userMessage, faq);
-              console.log(`🤖 FAQ "${faq.question}" - Simple similarity: ${similarity}`);
+              // Fallback to combined similarity if no embedding
+              const combinedMatch = this.calculateCombinedSimilarity(userMessage, faq);
+              similarity = combinedMatch.score;
+              matchMethod = combinedMatch.method;
+              console.log(`🤖 FAQ "${faq.question}" - Combined similarity: ${similarity} (${combinedMatch.method})`);
             }
             
-            return { faq, sim: similarity };
+            return { faq, sim: similarity, matchMethod };
           })
         );
         
@@ -199,12 +229,12 @@ class AIService {
           this.settings.aiProvider = 'LocalMock';
           writeLS(STORAGE_KEYS.settings, this.settings);
           
-          // Use simple similarity as fallback
+          // Use combined similarity as fallback
           candidates = activeFAQs
             .map(faq => {
-              const sim = simpleSimilarityScore(userMessage, faq);
-              console.log(`🤖 FAQ "${faq.question}" - Fallback similarity: ${sim}`);
-              return { faq, sim };
+              const combinedMatch = this.calculateCombinedSimilarity(userMessage, faq);
+              console.log(`🤖 FAQ "${faq.question}" - Fallback similarity: ${combinedMatch.score} (${combinedMatch.method})`);
+              return { faq, sim: combinedMatch.score, matchMethod: combinedMatch.method };
             })
             .filter(c => c.sim > (this.settings.similarityThreshold || 0.3))
             .sort((a, b) => b.sim - a.sim)
@@ -216,13 +246,13 @@ class AIService {
           processingDetails.processingSteps.push(`Embedding failed, used simple similarity fallback`);
         }
       } else {
-        // Use simple similarity for LocalMock or when no AI provider
-        console.log('🤖 Using simple similarity search (LocalMock or no API key)');
+        // Use combined similarity for LocalMock or when no AI provider
+        console.log('🤖 Using combined similarity search (LocalMock or no API key)');
         candidates = activeFAQs
           .map(faq => {
-            const sim = simpleSimilarityScore(userMessage, faq);
-            console.log(`🤖 FAQ "${faq.question}" - Simple similarity: ${sim}`);
-            return { faq, sim };
+            const combinedMatch = this.calculateCombinedSimilarity(userMessage, faq);
+            console.log(`🤖 FAQ "${faq.question}" - Combined similarity: ${combinedMatch.score} (${combinedMatch.method})`);
+            return { faq, sim: combinedMatch.score, matchMethod: combinedMatch.method };
           })
           .filter(c => c.sim > (this.settings.similarityThreshold || 0.3))
           .sort((a, b) => b.sim - a.sim)
@@ -239,12 +269,12 @@ class AIService {
     } catch (error) {
       console.error('🤖 Embedding search error:', error);
       console.log('🔄 Falling back to simple similarity search');
-      // Fallback to simple similarity
+      // Fallback to combined similarity
       candidates = activeFAQs
         .map(faq => {
-          const sim = simpleSimilarityScore(userMessage, faq);
-          console.log(`🤖 Fallback FAQ "${faq.question}" - similarity: ${sim}`);
-          return { faq, sim };
+          const combinedMatch = this.calculateCombinedSimilarity(userMessage, faq);
+          console.log(`🤖 Fallback FAQ "${faq.question}" - similarity: ${combinedMatch.score} (${combinedMatch.method})`);
+          return { faq, sim: combinedMatch.score, matchMethod: combinedMatch.method };
         })
         .filter(c => c.sim > (this.settings.similarityThreshold || 0.3))
         .sort((a, b) => b.sim - a.sim)
@@ -306,16 +336,15 @@ class AIService {
 
     let answer;
     
-    // Get confidence threshold from settings
-    const confidenceThreshold = this.settings.confidenceThreshold || 0.6;
-    console.log('🤖 Using confidence threshold:', confidenceThreshold);
+    // No confidence threshold - always use best match
+    console.log('🤖 Using best match strategy (no threshold)');
     
     // Update processing details
-    processingDetails.confidenceThreshold = confidenceThreshold;
+    processingDetails.confidenceThreshold = 'No threshold (using best match)';
     processingDetails.contextItems = contextItems;
     
-    // Use chat model if available and confidence is high enough
-    if (this.settings.aiProvider && this.settings.aiProvider !== 'LocalMock' && confidence > confidenceThreshold) {
+    // Use chat model if available (no confidence threshold)
+    if (this.settings.aiProvider && this.settings.aiProvider !== 'LocalMock' && confidence > 0) {
       try {
         answer = await callChatModel({
           settings: this.settings,
@@ -335,17 +364,17 @@ class AIService {
         processingDetails.processingSteps.push('Chat model failed, using fallback');
       }
     } else {
-      // Use simple answer or fallback based on confidence threshold
-      if (bestMatch && confidence > confidenceThreshold) {
+      // Always use the best match if available, regardless of confidence threshold
+      if (bestMatch && confidence > 0) {
         answer = bestMatch.faq.answer;
-        console.log('🤖 Using FAQ answer (confidence > threshold)');
-        processingDetails.finalDecision = 'FAQ answer (high confidence)';
-        processingDetails.processingSteps.push('FAQ answer selected');
+        console.log(`🤖 Using FAQ answer (confidence: ${confidence.toFixed(3)})`);
+        processingDetails.finalDecision = `FAQ answer (confidence: ${confidence.toFixed(3)})`;
+        processingDetails.processingSteps.push('FAQ answer selected (no threshold)');
       } else {
         answer = this.getFallbackAnswer(userMessage, contextItems);
-        console.log('🤖 Using fallback answer (confidence < threshold)');
-        processingDetails.finalDecision = 'Fallback (low confidence)';
-        processingDetails.processingSteps.push('Fallback answer selected');
+        console.log('🤖 Using fallback answer (no matches found)');
+        processingDetails.finalDecision = 'Fallback (no matches)';
+        processingDetails.processingSteps.push('Fallback answer selected (no matches)');
       }
     }
 
@@ -455,7 +484,7 @@ class AIService {
           activeFaqs: this.getActiveFAQs().length,
           candidatesFound: 0,
           topCandidates: [],
-          confidenceThreshold: this.settings.confidenceThreshold || 0.6,
+          confidenceThreshold: 'No threshold (using best match)',
           similarityThreshold: this.settings.similarityThreshold || 0.3,
           finalDecision: 'Error fallback',
           contextItems: [],

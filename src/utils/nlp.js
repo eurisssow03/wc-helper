@@ -68,3 +68,54 @@ export function synonymBoost(query, text){
   });
   return { hit, score: Math.min(0.2, score) };
 }
+
+// Tag-based matching function (highest priority)
+export function tagBasedMatch(query, faq) {
+  if (!faq.is_active || !faq.tags || faq.tags.length === 0) {
+    return { matched: false, score: 0, matchedTags: [] };
+  }
+  
+  const queryLower = query.toLowerCase();
+  const queryTokens = tokenize(query);
+  const matchedTags = [];
+  let totalScore = 0;
+  
+  // Check each tag for matches
+  faq.tags.forEach(tag => {
+    const tagLower = tag.toLowerCase();
+    
+    // Exact tag match (highest score)
+    if (queryLower === tagLower) {
+      matchedTags.push(tag);
+      totalScore += 1.0;
+    }
+    // Tag contains query (high score)
+    else if (tagLower.includes(queryLower)) {
+      matchedTags.push(tag);
+      totalScore += 0.8;
+    }
+    // Query contains tag (medium-high score)
+    else if (queryLower.includes(tagLower)) {
+      matchedTags.push(tag);
+      totalScore += 0.7;
+    }
+    // Partial token match (medium score)
+    else {
+      const tagTokens = tokenize(tag);
+      const tokenSimilarity = jaccardSimilarity(queryTokens, tagTokens);
+      if (tokenSimilarity > 0.3) {
+        matchedTags.push(tag);
+        totalScore += tokenSimilarity * 0.6;
+      }
+    }
+  });
+  
+  // Normalize score (max 1.0)
+  const normalizedScore = Math.min(1.0, totalScore);
+  
+  return {
+    matched: matchedTags.length > 0,
+    score: normalizedScore,
+    matchedTags: matchedTags
+  };
+}
