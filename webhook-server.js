@@ -15,7 +15,7 @@ const WEBHOOK_VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN || 'my_verify_toke
 const WHATSAPP_ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN || 'EAAZAwCVwdvKIBPqDSuS0pWld1NtyqN6GptxOAlQyakFvPhqq62xCK6ZCDUkWxkSkjZCnF6VYcpdiFknmRWQPW20uLZARYC9o5na24lOxU1Eh8LflAMw1fH1DayDWHDvwtHZCROZCWoKFbiX3ZBJkvJtyrWBtWncpZCVU2gYovgU8YTAN3Amug73N78czBTIipZBnfmIZAQsVUtI3CxL8HZAouV7GySiH6icmiwRbTuY6dR8hWEZD';
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || '60165281800';
 const WHATSAPP_API_VERSION = process.env.WHATSAPP_API_VERSION || 'v18.0';
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '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';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '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';
 
 // Initialize global storage with sample data
 function initializeGlobalStorage() {
