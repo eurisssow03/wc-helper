@@ -165,12 +165,56 @@ async function storeMessage(messageData) {
   }
 }
 
-// WhatsApp API Functions (placeholder)
+// WhatsApp API Functions
 async function sendWhatsAppReply(toNumber, message) {
-  console.log(`📤 Would send WhatsApp reply to ${toNumber}: ${message}`);
-  // TODO: Implement WhatsApp API sending
-  // This would use the WhatsApp Business API to send messages
-  return { success: true, messageId: 'placeholder' };
+  console.log(`📤 Sending WhatsApp reply to ${toNumber}: ${message}`);
+  
+  try {
+    // Get WhatsApp API credentials from environment variables
+    const ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
+    const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    const API_VERSION = process.env.WHATSAPP_API_VERSION || 'v18.0';
+    
+    if (!ACCESS_TOKEN || !PHONE_NUMBER_ID) {
+      console.error('❌ Missing WhatsApp API credentials');
+      console.error('   Required: WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID');
+      return { success: false, error: 'Missing API credentials' };
+    }
+    
+    const url = `https://graph.facebook.com/${API_VERSION}/${PHONE_NUMBER_ID}/messages`;
+    
+    const payload = {
+      messaging_product: 'whatsapp',
+      to: toNumber,
+      type: 'text',
+      text: {
+        body: message
+      }
+    };
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${ACCESS_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      console.log('✅ WhatsApp message sent successfully:', result);
+      return { success: true, messageId: result.messages?.[0]?.id || 'unknown' };
+    } else {
+      console.error('❌ WhatsApp API error:', result);
+      return { success: false, error: result.error?.message || 'Unknown error' };
+    }
+    
+  } catch (error) {
+    console.error('❌ Error sending WhatsApp message:', error);
+    return { success: false, error: error.message };
+  }
 }
 
 // Middleware
@@ -231,6 +275,8 @@ app.get('/webhook/whatsapp', (req, res) => {
 app.post('/webhook/whatsapp', async (req, res) => {
   console.log('📨 Received webhook message:', JSON.stringify(req.body, null, 2));
   console.log('📨 Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('📨 Request IP:', req.ip || req.connection.remoteAddress);
+  console.log('📨 User Agent:', req.get('User-Agent'));
   
   try {
     const body = req.body;
@@ -238,20 +284,25 @@ app.post('/webhook/whatsapp', async (req, res) => {
     // Log the raw body for debugging
     console.log('📨 Raw body type:', typeof body);
     console.log('📨 Body object:', body.object);
+    console.log('📨 Body keys:', Object.keys(body));
     
     if (body.object === 'whatsapp_business_account') {
       console.log('✅ Valid WhatsApp Business Account object');
+      console.log('📨 Number of entries:', body.entry?.length || 0);
       
       for (let entryIndex = 0; entryIndex < body.entry.length; entryIndex++) {
         const entry = body.entry[entryIndex];
         console.log(`📨 Processing entry ${entryIndex}:`, entry.id);
+        console.log('📨 Entry changes count:', entry.changes?.length || 0);
         
         for (let changeIndex = 0; changeIndex < entry.changes.length; changeIndex++) {
           const change = entry.changes[changeIndex];
           console.log(`📨 Processing change ${changeIndex}:`, change.field);
+          console.log('📨 Change value keys:', Object.keys(change.value || {}));
           
           if (change.field === 'messages') {
             console.log('✅ Messages field detected');
+            console.log('📨 Change value:', JSON.stringify(change.value, null, 2));
             
             // Check for incoming messages
             const messages = change.value.messages;
@@ -293,9 +344,13 @@ app.post('/webhook/whatsapp', async (req, res) => {
                     status: 'processed'
                   });
                   
-                  // TODO: Send WhatsApp reply
-                  // await sendWhatsAppReply(message.from, response.answer);
-                  console.log('📤 Would send reply:', response.answer);
+                  // Send WhatsApp reply
+                  const sendResult = await sendWhatsAppReply(message.from, response.answer);
+                  if (sendResult.success) {
+                    console.log('✅ WhatsApp reply sent successfully');
+                  } else {
+                    console.error('❌ Failed to send WhatsApp reply:', sendResult.error);
+                  }
                 } catch (error) {
                   console.error('❌ AI processing error:', error);
                   
@@ -342,6 +397,13 @@ app.post('/webhook/whatsapp', async (req, res) => {
       }
     } else {
       console.log('❌ Invalid object type:', body.object);
+      console.log('📨 Expected: whatsapp_business_account');
+      console.log('📨 Received body structure:', {
+        object: body.object,
+        hasEntry: !!body.entry,
+        entryLength: body.entry?.length || 0,
+        allKeys: Object.keys(body)
+      });
     }
     
     res.status(200).json({ status: 'OK', message: 'Webhook processed successfully' });
