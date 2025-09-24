@@ -163,14 +163,20 @@ function getFallbackAnswer(userMessage, responseTemplates = null) {
   const isChinese = /[\u4e00-\u9fa5]/.test(userMessage);
   const language = isChinese ? 'zh' : 'en';
   
-  let answer = templates[language]?.fallback || templates.en?.fallback || defaultTemplates.en.fallback;
-
-  // Add greeting for first message
+  // Check if this is a greeting message
   const greetingKeywords = ['hello', 'hi', 'help', '你好', '嗨', '帮助'];
-  if (greetingKeywords.some(keyword => userMessage.toLowerCase().includes(keyword))) {
+  const isGreeting = greetingKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
+  
+  if (isGreeting) {
+    // For greeting messages, only return the greeting (no fallback)
     const greeting = templates[language]?.greeting || templates.en?.greeting || defaultTemplates.en.greeting;
-    answer = greeting + answer;
+    console.log('  👋 Detected greeting message, returning greeting only');
+    return greeting;
   }
+  
+  // For non-greeting messages, return fallback message
+  const answer = templates[language]?.fallback || templates.en?.fallback || defaultTemplates.en.fallback;
+  console.log('  🔄 Returning fallback message for non-greeting');
 
   return answer;
 }
@@ -190,6 +196,61 @@ async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = [
   // Filter only active FAQs
   const activeFAQs = faqs.filter(faq => faq.is_active === true);
   console.log('  ✅ Active FAQs:', activeFAQs.length);
+  
+  // Check if this is a greeting message first
+  const greetingKeywords = ['hello', 'hi', 'help', '你好', '嗨', '帮助'];
+  const isGreeting = greetingKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
+  
+  if (isGreeting) {
+    console.log('👋 Detected greeting message, skipping similarity search');
+    const isChinese = /[\u4e00-\u9fa5]/.test(userMessage);
+    const language = isChinese ? 'zh' : 'en';
+    
+    const greeting = language === 'zh' 
+      ? "您好！欢迎咨询我们的民宿服务。"
+      : "Hello! Welcome to our homestay service. How can I help you today?";
+    
+    const processingTime = Date.now() - startTime;
+    const result = {
+      answer: greeting,
+      confidence: 1.0, // Perfect confidence for greeting
+      matchedQuestion: null,
+      processingTime,
+      source: 'WebhookAI',
+      processingDetails: {
+        totalFaqs: faqs.length,
+        activeFaqs: activeFAQs.length,
+        candidatesFound: 0,
+        topCandidates: [],
+        confidenceThreshold: 'Greeting detected (no threshold)',
+        similarityThreshold: 0.3,
+        finalDecision: 'Greeting response',
+        contextItems: [],
+        processingSteps: ['Greeting message detected', 'Greeting response generated'],
+        searchMethod: 'Greeting Detection',
+        rerankingApplied: false,
+        confidenceCategory: 'High'
+      }
+    };
+    
+    console.log('🏁 ===== WEBHOOK AI PROCESSING COMPLETED (GREETING) =====');
+    console.log('  ⏱️ Total Processing Time:', processingTime + 'ms');
+    console.log('  📊 Final Confidence: 1.0000 (Greeting)');
+    console.log('  🏷️ Confidence Category: High');
+    console.log('  📝 Answer Length:', greeting.length + ' characters');
+    console.log('  🔍 Match Method: greeting');
+    console.log('  ✅ Result Summary:', {
+      hasAnswer: true,
+      hasMatch: false,
+      confidence: '1.0000',
+      processingTime: processingTime + 'ms',
+      answerPreview: greeting.substring(0, 100) + (greeting.length > 100 ? '...' : ''),
+      finalDecision: 'Greeting response'
+    });
+    console.log('==========================================');
+    
+    return result;
+  }
   
   if (activeFAQs.length === 0) {
     console.log('🤖 Webhook AI: No active FAQs, using fallback');

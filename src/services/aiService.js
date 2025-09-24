@@ -172,6 +172,64 @@ class AIService {
     
     const activeFAQs = this.getActiveFAQs();
     console.log('🔍 Starting similarity search with', activeFAQs.length, 'active FAQs');
+    
+    // Check if this is a greeting message first
+    const greetingKeywords = ['hello', 'hi', 'help', '你好', '嗨', '帮助'];
+    const isGreeting = greetingKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
+    
+    if (isGreeting) {
+      console.log('👋 Detected greeting message, skipping similarity search');
+      const responseTemplates = this.settings.aiRules?.responseTemplates || {};
+      const isChinese = /[\u4e00-\u9fa5]/.test(userMessage);
+      const language = isChinese ? 'zh' : 'en';
+      
+      const greeting = responseTemplates[language]?.greeting || 
+                      responseTemplates.en?.greeting || 
+                      "Hello! Welcome to our homestay service. How can I help you today?";
+      
+      const processingTime = Date.now() - startTime;
+      const result = {
+        answer: greeting,
+        confidence: 1.0, // Perfect confidence for greeting
+        matchedQuestion: null,
+        processingTime,
+        contextItems: [],
+        source: 'AIService',
+        processingDetails: {
+          totalFaqs: this.faqs.length,
+          activeFaqs: activeFAQs.length,
+          candidatesFound: 0,
+          topCandidates: [],
+          confidenceThreshold: 'Greeting detected (no threshold)',
+          similarityThreshold: this.settings.similarityThreshold || 0.3,
+          finalDecision: 'Greeting response',
+          contextItems: [],
+          processingSteps: ['Greeting message detected', 'Greeting response generated'],
+          searchMethod: 'Greeting Detection',
+          rerankingApplied: false,
+          confidenceCategory: 'High'
+        }
+      };
+      
+      console.log('🏁 ===== AI PROCESSING COMPLETED (GREETING) =====');
+      console.log('  ⏱️ Total Processing Time:', processingTime + 'ms');
+      console.log('  📊 Final Confidence: 1.0000 (Greeting)');
+      console.log('  🏷️ Confidence Category: High');
+      console.log('  📝 Answer Length:', greeting.length + ' characters');
+      console.log('  🔍 Match Method: greeting');
+      console.log('  ✅ Result Summary:', {
+        hasAnswer: true,
+        hasMatch: false,
+        confidence: '1.0000',
+        processingTime: processingTime + 'ms',
+        answerPreview: greeting.substring(0, 100) + (greeting.length > 100 ? '...' : ''),
+        finalDecision: 'Greeting response'
+      });
+      console.log('=====================================');
+      
+      return result;
+    }
+    
     let candidates = [];
     
     // Initialize processing details for logging
@@ -457,20 +515,25 @@ class AIService {
     const isChinese = /[\u4e00-\u9fa5]/.test(userMessage);
     const language = isChinese ? 'zh' : 'en';
     
-    // Get fallback message from settings, with fallback to default
-    let answer = responseTemplates[language]?.fallback || 
-                 responseTemplates.en?.fallback || 
-                 "Sorry, I couldn't understand your question. We will have someone contact you soon.";
-
-    // Add greeting for first message
+    // Check if this is a greeting message
     const greetingKeywords = ['hello', 'hi', 'help', '你好', '嗨', '帮助'];
-    if (greetingKeywords.some(keyword => userMessage.toLowerCase().includes(keyword))) {
+    const isGreeting = greetingKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
+    
+    if (isGreeting) {
+      // For greeting messages, only return the greeting (no fallback)
       const greeting = responseTemplates[language]?.greeting || 
                       responseTemplates.en?.greeting || 
-                      "Hello! Welcome to our homestay service. ";
-      answer = greeting + answer;
+                      "Hello! Welcome to our homestay service. How can I help you today?";
+      console.log('  👋 Detected greeting message, returning greeting only');
+      return greeting;
     }
-
+    
+    // For non-greeting messages, return fallback message
+    const answer = responseTemplates[language]?.fallback || 
+                   responseTemplates.en?.fallback || 
+                   "Sorry, I couldn't understand your question. We will have someone contact you soon.";
+    
+    console.log('  🔄 Returning fallback message for non-greeting');
     return answer;
   }
 
