@@ -356,7 +356,7 @@ export function LogsPage() {
                         {log.confidence ? `${(log.confidence * 100).toFixed(1)}%` : '—'}
                       </span>
                       <div style={{ fontSize: 11, color: '#6c757d', marginTop: 2 }}>
-                        {getConfidenceLabel(log.confidence)}
+                        {log.ai_processing?.confidence_category || getConfidenceLabel(log.confidence)}
                       </div>
                     </td>
                     <td style={baseStyles.td}>
@@ -611,6 +611,42 @@ export function LogsPage() {
                         <label style={{ ...baseStyles.label, marginBottom: 4 }}>Confidence Threshold</label>
                         <div style={{ padding: 8, backgroundColor: '#f3e5f5', borderRadius: 6 }}>
                           {(selectedLog.ai_processing.confidence_threshold * 100).toFixed(1)}%
+                        </div>
+                      </div>
+
+                      <div>
+                        <label style={{ ...baseStyles.label, marginBottom: 4 }}>Similarity Threshold</label>
+                        <div style={{ padding: 8, backgroundColor: '#fff3e0', borderRadius: 6 }}>
+                          {(selectedLog.ai_processing.similarity_threshold * 100).toFixed(1)}%
+                        </div>
+                      </div>
+
+                      <div>
+                        <label style={{ ...baseStyles.label, marginBottom: 4 }}>Search Method</label>
+                        <div style={{ padding: 8, backgroundColor: '#e8f5e8', borderRadius: 6 }}>
+                          {selectedLog.ai_processing.search_method || 'Unknown'}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label style={{ ...baseStyles.label, marginBottom: 4 }}>Confidence Category</label>
+                        <div style={{ 
+                          padding: 8, 
+                          backgroundColor: selectedLog.ai_processing.confidence_category === 'High' ? '#e8f5e8' : 
+                                         selectedLog.ai_processing.confidence_category === 'Medium' ? '#fff3e0' : '#ffebee',
+                          borderRadius: 6,
+                          fontWeight: 600,
+                          color: selectedLog.ai_processing.confidence_category === 'High' ? '#2e7d32' :
+                                 selectedLog.ai_processing.confidence_category === 'Medium' ? '#f57c00' : '#d32f2f'
+                        }}>
+                          {selectedLog.ai_processing.confidence_category || 'Unknown'}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label style={{ ...baseStyles.label, marginBottom: 4 }}>Reranking Applied</label>
+                        <div style={{ padding: 8, backgroundColor: '#e3f2fd', borderRadius: 6 }}>
+                          {selectedLog.ai_processing.reranking_applied ? 'Yes' : 'No'}
                         </div>
                       </div>
 

@@ -176,12 +176,16 @@ async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = [
         isActive: c.faq.is_active
       })),
       confidenceThreshold: 0.6, // Default threshold for webhook
+      similarityThreshold: 0.3, // Default similarity threshold
+      searchMethod: 'Simple similarity',
+      rerankingApplied: true,
+      confidenceCategory: confidence >= 0.8 ? 'High' : confidence >= 0.5 ? 'Medium' : 'Low',
       finalDecision: confidence > 0.6 ? 'FAQ answer (high confidence)' : 'Fallback (low confidence)',
       contextItems: [],
       processingSteps: [
         'FAQ filtering completed',
-        'Similarity search completed',
-        'Reranking completed',
+        'Simple similarity search completed (threshold: 0.3)',
+        'Reranking with signals completed',
         confidence > 0.6 ? 'FAQ answer selected' : 'Fallback answer selected'
       ]
     }

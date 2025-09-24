@@ -6,7 +6,7 @@ import { defaultSettings, TZ, AI_MODEL_OPTIONS } from '../../utils/constants.js'
 export function SettingsPage({ onSaved }) {
   const [settings, setSettings] = useState(defaultSettings);
   const [isDirty, setIsDirty] = useState(false);
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState('business');
 
   useEffect(() => {
     const savedSettings = readLS(STORAGE_KEYS.settings, defaultSettings);
@@ -69,64 +69,12 @@ export function SettingsPage({ onSaved }) {
   };
 
   const tabs = [
-    { id: 'general', label: 'General', icon: '⚙️' },
+    { id: 'business', label: 'AI Working Hours', icon: '🕒' },
     { id: 'ai', label: 'AI Config', icon: '🤖' },
     { id: 'ai_rules', label: 'AI Rules', icon: '📋' },
-    { id: 'whatsapp', label: 'WhatsApp', icon: '📱' },
-    { id: 'business', label: 'Business Hours', icon: '🕒' },
-    { id: 'response', label: 'Response', icon: '💬' }
+    { id: 'whatsapp', label: 'WhatsApp', icon: '📱' }
   ];
 
-  const renderGeneralSettings = () => (
-    <div style={{ display: 'grid', gap: 20 }}>
-      <div style={baseStyles.card}>
-        <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>Basic Configuration</h3>
-        
-        <div style={{ marginBottom: 16 }}>
-          <label style={baseStyles.label}>24/7 Operation Mode</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input
-              type="checkbox"
-              checked={settings.alwaysOn}
-              onChange={(e) => handleChange('alwaysOn', e.target.checked)}
-              style={{ transform: 'scale(1.2)' }}
-            />
-            <span style={{ fontSize: 14, color: '#64748b' }}>
-              When enabled, the system will work 24/7, not limited by business hours
-            </span>
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 16 }}>
-          <label style={baseStyles.label}>Busy Mode</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input
-              type="checkbox"
-              checked={settings.busyMode}
-              onChange={(e) => handleChange('busyMode', e.target.checked)}
-              style={{ transform: 'scale(1.2)' }}
-            />
-            <span style={{ fontSize: 14, color: '#64748b' }}>
-              When enabled, a busy notice will be added before responses
-            </span>
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 16 }}>
-          <label style={baseStyles.label}>Preferred Language</label>
-          <select
-            value={settings.preferredLang}
-            onChange={(e) => handleChange('preferredLang', e.target.value)}
-            style={baseStyles.select}
-          >
-            <option value="auto">Auto Detect</option>
-            <option value="zh">Chinese</option>
-            <option value="en">English</option>
-          </select>
-        </div>
-      </div>
-    </div>
-  );
 
   const renderAISettings = () => (
     <div style={{ display: 'grid', gap: 20 }}>
@@ -294,142 +242,167 @@ export function SettingsPage({ onSaved }) {
             Lower values produce more consistent responses, higher values produce more creative responses
           </div>
         </div>
-      </div>
-    </div>
-  );
 
-  const renderBusinessSettings = () => (
-    <div style={{ display: 'grid', gap: 20 }}>
-      <div style={baseStyles.card}>
-        <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>Business Hours Settings</h3>
-        
         <div style={{ marginBottom: 16 }}>
-          <label style={baseStyles.label}>Timezone</label>
-          <select
-            value={settings.businessHours.tz}
-            onChange={(e) => handleNestedChange('businessHours', 'tz', e.target.value)}
-            style={baseStyles.select}
-          >
-            <option value="Asia/Kuala_Lumpur">Asia/Kuala_Lumpur (UTC+8)</option>
-            <option value="Asia/Shanghai">Asia/Shanghai (UTC+8)</option>
-            <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
-            <option value="America/New_York">America/New_York (UTC-5)</option>
-            <option value="Europe/London">Europe/London (UTC+0)</option>
-          </select>
-        </div>
-
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: '1fr 1fr', 
-          gap: 16, 
-          marginBottom: 16,
-          [`@media (max-width: ${breakpoints.mobile})`]: {
-            gridTemplateColumns: '1fr',
-            gap: 12
-          }
-        }}>
-          <div>
-            <label style={baseStyles.label}>Start Time</label>
-            <input
-              type="time"
-              value={settings.businessHours.start}
-              onChange={(e) => handleNestedChange('businessHours', 'start', e.target.value)}
-              style={baseStyles.input}
-            />
-          </div>
-          <div>
-            <label style={baseStyles.label}>End Time</label>
-            <input
-              type="time"
-              value={settings.businessHours.end}
-              onChange={(e) => handleNestedChange('businessHours', 'end', e.target.value)}
-              style={baseStyles.input}
-            />
-          </div>
-        </div>
-
-        <div style={{ 
-          padding: 12, 
-          backgroundColor: '#f8f9fa', 
-          borderRadius: 8, 
-          fontSize: 14, 
-          color: '#6c757d' 
-        }}>
-          <strong>Current Timezone:</strong> {TZ}<br/>
-          <strong>Business Hours:</strong> {settings.businessHours.start} - {settings.businessHours.end}
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderResponseSettings = () => (
-    <div style={{ display: 'grid', gap: 20 }}>
-      <div style={baseStyles.card}>
-        <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>Response Configuration</h3>
-        
-        <div style={{ marginBottom: 16 }}>
-          <label style={baseStyles.label}>Default Reply</label>
-          <textarea
-            value={settings.fallbackReply}
-            onChange={(e) => handleChange('fallbackReply', e.target.value)}
-            placeholder="Default reply when the system cannot understand user questions"
-            style={{
-              ...baseStyles.input,
-              minHeight: '80px',
-              resize: 'vertical'
-            }}
+          <label style={baseStyles.label}>
+            Similarity Threshold: {settings.similarityThreshold || 0.3}
+          </label>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={settings.similarityThreshold || 0.3}
+            onChange={(e) => handleChange('similarityThreshold', parseFloat(e.target.value))}
+            style={{ width: '100%' }}
           />
           <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-            Suggest maintaining a friendly and professional tone
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 16 }}>
-          <label style={baseStyles.label}>Busy Mode Notice</label>
-          <div style={{ fontSize: 14, color: '#64748b', marginBottom: 8 }}>
-            When busy mode is enabled, this notice will be added before responses:
-          </div>
-          <div style={{ 
-            padding: 12, 
-            backgroundColor: '#f8f9fa', 
-            borderRadius: 8, 
-            fontSize: 14,
-            fontStyle: 'italic'
-          }}>
-            {settings.busyMode ? 
-              (settings.preferredLang === 'en' ? 
-                "[We are experiencing high volume] " : 
-                "【Currently experiencing high volume, there may be slight delays】 ") : 
-              "Busy mode not enabled"
-            }
-          </div>
-        </div>
-      </div>
-
-      <div style={baseStyles.card}>
-        <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>Test Configuration</h3>
-        
-        <div style={{ marginBottom: 16 }}>
-          <label style={baseStyles.label}>Current Configuration Preview</label>
-          <div style={{ 
-            padding: 12, 
-            backgroundColor: '#f8f9fa', 
-            borderRadius: 8, 
-            fontSize: 13,
-            fontFamily: 'monospace'
-          }}>
-            <div><strong>Answer Mode:</strong> {settings.answerMode}</div>
-            <div><strong>AI Provider:</strong> {settings.aiProvider}</div>
-            <div><strong>Confidence Threshold:</strong> {settings.confidenceThreshold}</div>
-            <div><strong>Max Tokens:</strong> {settings.maxTokens}</div>
-            <div><strong>Temperature:</strong> {settings.temperature}</div>
-            <div><strong>24/7 Mode:</strong> {settings.alwaysOn ? 'Yes' : 'No'}</div>
-            <div><strong>Busy Mode:</strong> {settings.busyMode ? 'Yes' : 'No'}</div>
+            Minimum similarity score required for FAQ matching (0.0 = no threshold, 1.0 = exact match only)
           </div>
         </div>
       </div>
     </div>
   );
+
+  const renderBusinessSettings = () => {
+    const daysOfWeek = [
+      { key: 'monday', label: 'Monday' },
+      { key: 'tuesday', label: 'Tuesday' },
+      { key: 'wednesday', label: 'Wednesday' },
+      { key: 'thursday', label: 'Thursday' },
+      { key: 'friday', label: 'Friday' },
+      { key: 'saturday', label: 'Saturday' },
+      { key: 'sunday', label: 'Sunday' }
+    ];
+
+    return (
+      <div style={{ display: 'grid', gap: 20 }}>
+        <div style={baseStyles.card}>
+          <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>AI Working Hours</h3>
+          
+          <div style={{ marginBottom: 16 }}>
+            <label style={baseStyles.label}>Timezone</label>
+            <select
+              value={settings.businessHours.tz}
+              onChange={(e) => handleNestedChange('businessHours', 'tz', e.target.value)}
+              style={baseStyles.select}
+            >
+              <option value="Asia/Kuala_Lumpur">Asia/Kuala_Lumpur (UTC+8)</option>
+              <option value="Asia/Shanghai">Asia/Shanghai (UTC+8)</option>
+              <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
+              <option value="America/New_York">America/New_York (UTC-5)</option>
+              <option value="Europe/London">Europe/London (UTC+0)</option>
+            </select>
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={baseStyles.label}>24/7 Operation Mode</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={settings.alwaysOn}
+                onChange={(e) => handleChange('alwaysOn', e.target.checked)}
+                style={{ transform: 'scale(1.2)' }}
+              />
+              <span style={{ fontSize: 14, color: '#64748b' }}>
+                When enabled, AI will work 24/7, ignoring working hours below
+              </span>
+            </div>
+          </div>
+
+          {!settings.alwaysOn && (
+            <div style={{ marginBottom: 16 }}>
+              <label style={baseStyles.label}>Daily Working Hours</label>
+              <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
+                Set working hours for each day of the week. AI will only respond during these hours.
+              </div>
+              
+              {daysOfWeek.map((day) => (
+                <div key={day.key} style={{
+                  display: 'grid',
+                  gridTemplateColumns: '120px 1fr 1fr 80px',
+                  gap: 12,
+                  alignItems: 'center',
+                  marginBottom: 12,
+                  padding: 12,
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: 6,
+                  border: '1px solid #e9ecef'
+                }}>
+                  <div style={{ fontWeight: 500, fontSize: 14 }}>
+                    {day.label}
+                  </div>
+                  
+                  <div>
+                    <label style={{ ...baseStyles.label, fontSize: 12, marginBottom: 4 }}>Start Time</label>
+                    <input
+                      type="time"
+                      value={settings.businessHours[day.key]?.start || '09:00'}
+                      onChange={(e) => handleNestedChange('businessHours', day.key, {
+                        ...settings.businessHours[day.key],
+                        start: e.target.value
+                      })}
+                      style={{ ...baseStyles.input, fontSize: 12, padding: '6px 8px' }}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label style={{ ...baseStyles.label, fontSize: 12, marginBottom: 4 }}>End Time</label>
+                    <input
+                      type="time"
+                      value={settings.businessHours[day.key]?.end || '18:00'}
+                      onChange={(e) => handleNestedChange('businessHours', day.key, {
+                        ...settings.businessHours[day.key],
+                        end: e.target.value
+                      })}
+                      style={{ ...baseStyles.input, fontSize: 12, padding: '6px 8px' }}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label style={{ ...baseStyles.label, fontSize: 12, marginBottom: 4 }}>Enabled</label>
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={settings.businessHours[day.key]?.enabled !== false}
+                        onChange={(e) => handleNestedChange('businessHours', day.key, {
+                          ...settings.businessHours[day.key],
+                          enabled: e.target.checked
+                        })}
+                        style={{ transform: 'scale(1.2)' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ 
+            padding: 12, 
+            backgroundColor: '#f8f9fa', 
+            borderRadius: 8, 
+            fontSize: 14, 
+            color: '#6c757d' 
+          }}>
+            <strong>Current Timezone:</strong> {TZ}<br/>
+            <strong>24/7 Mode:</strong> {settings.alwaysOn ? 'Enabled' : 'Disabled'}<br/>
+            {!settings.alwaysOn && (
+              <>
+                <strong>Working Days:</strong> {
+                  daysOfWeek
+                    .filter(day => settings.businessHours[day.key]?.enabled !== false)
+                    .map(day => day.label)
+                    .join(', ') || 'None configured'
+                }
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
 
   const renderWhatsAppSettings = () => (
     <div style={{ display: 'grid', gap: 20 }}>
@@ -743,13 +716,11 @@ export function SettingsPage({ onSaved }) {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'general': return renderGeneralSettings();
+      case 'business': return renderBusinessSettings();
       case 'ai': return renderAISettings();
       case 'ai_rules': return renderAIRulesSettings();
       case 'whatsapp': return renderWhatsAppSettings();
-      case 'business': return renderBusinessSettings();
-      case 'response': return renderResponseSettings();
-      default: return renderGeneralSettings();
+      default: return renderBusinessSettings();
     }
   };
 

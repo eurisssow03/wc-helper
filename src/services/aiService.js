@@ -55,6 +55,13 @@ class AIService {
     return this.faqs.filter(faq => faq.is_active === true);
   }
 
+  // Categorize confidence level
+  getConfidenceCategory(confidence) {
+    if (confidence >= 0.8) return 'High';
+    if (confidence >= 0.5) return 'Medium';
+    return 'Low';
+  }
+
   // Process message with unified AI logic
   async processMessage(userMessage, options = {}) {
     const startTime = Date.now();
@@ -81,9 +88,13 @@ class AIService {
       candidatesFound: 0,
       topCandidates: [],
       confidenceThreshold: this.settings.confidenceThreshold || 0.6,
+      similarityThreshold: this.settings.similarityThreshold || 0.3,
       finalDecision: 'unknown',
       contextItems: [],
-      processingSteps: []
+      processingSteps: [],
+      searchMethod: 'unknown',
+      rerankingApplied: false,
+      confidenceCategory: 'unknown'
     };
     
     try {
@@ -109,16 +120,20 @@ class AIService {
           })
         );
         
+        // Apply similarity threshold
+        const similarityThreshold = this.settings.similarityThreshold || 0.3;
         candidates = candidates
-          .filter(c => c.sim > 0)
+          .filter(c => c.sim > similarityThreshold)
           .sort((a, b) => b.sim - a.sim)
           .slice(0, 10);
           
-        console.log('🤖 Candidates found:', candidates.length);
+        console.log('🤖 Candidates found:', candidates.length, `(similarity > ${similarityThreshold})`);
         
         // Update processing details
         processingDetails.candidatesFound = candidates.length;
-        processingDetails.processingSteps.push('Embedding-based search completed');
+        processingDetails.similarityThreshold = similarityThreshold;
+        processingDetails.searchMethod = 'Embedding-based';
+        processingDetails.processingSteps.push(`Embedding-based search completed (threshold: ${similarityThreshold})`);
       } else {
         // Use simple similarity for LocalMock or when no AI provider
         candidates = activeFAQs
@@ -127,15 +142,17 @@ class AIService {
             console.log(`🤖 FAQ "${faq.question}" - Simple similarity: ${sim}`);
             return { faq, sim };
           })
-          .filter(c => c.sim > 0)
+          .filter(c => c.sim > (this.settings.similarityThreshold || 0.3))
           .sort((a, b) => b.sim - a.sim)
           .slice(0, 10);
           
-        console.log('🤖 Simple candidates found:', candidates.length);
+        console.log('🤖 Simple candidates found:', candidates.length, `(similarity > ${this.settings.similarityThreshold || 0.3})`);
         
         // Update processing details
         processingDetails.candidatesFound = candidates.length;
-        processingDetails.processingSteps.push('Simple similarity search completed');
+        processingDetails.similarityThreshold = this.settings.similarityThreshold || 0.3;
+        processingDetails.searchMethod = 'Simple similarity';
+        processingDetails.processingSteps.push(`Simple similarity search completed (threshold: ${this.settings.similarityThreshold || 0.3})`);
       }
     } catch (error) {
       console.error('🤖 Embedding search error:', error);
@@ -146,15 +163,17 @@ class AIService {
           console.log(`🤖 Fallback FAQ "${faq.question}" - similarity: ${sim}`);
           return { faq, sim };
         })
-        .filter(c => c.sim > 0)
+        .filter(c => c.sim > (this.settings.similarityThreshold || 0.3))
         .sort((a, b) => b.sim - a.sim)
         .slice(0, 10);
         
-      console.log('🤖 Fallback candidates found:', candidates.length);
+      console.log('🤖 Fallback candidates found:', candidates.length, `(similarity > ${this.settings.similarityThreshold || 0.3})`);
       
       // Update processing details
       processingDetails.candidatesFound = candidates.length;
-      processingDetails.processingSteps.push('Fallback similarity search completed');
+      processingDetails.similarityThreshold = this.settings.similarityThreshold || 0.3;
+      processingDetails.searchMethod = 'Fallback similarity';
+      processingDetails.processingSteps.push(`Fallback similarity search completed (threshold: ${this.settings.similarityThreshold || 0.3})`);
     }
 
     // Rerank with signals
@@ -177,6 +196,7 @@ class AIService {
       finalScore: r.final,
       isActive: r.faq.is_active
     }));
+    processingDetails.rerankingApplied = true;
     processingDetails.processingSteps.push('Reranking with signals completed');
 
     const processingTime = Date.now() - startTime;
@@ -185,6 +205,10 @@ class AIService {
     const bestMatch = reranked[0];
     const confidence = bestMatch?.final || 0;
     const matchedQuestion = bestMatch?.faq?.question || null;
+    const confidenceCategory = this.getConfidenceCategory(confidence);
+    
+    // Update processing details
+    processingDetails.confidenceCategory = confidenceCategory;
 
     console.log('🤖 Best match:', { question: matchedQuestion, confidence });
 
