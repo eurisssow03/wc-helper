@@ -342,8 +342,9 @@ export function LogsPage() {
               <th style={baseStyles.th}>Time</th>
               <th style={baseStyles.th}>Channel</th>
               <th style={baseStyles.th}>User Question</th>
-              <th style={baseStyles.th}>Matched Question</th>
+              <th style={baseStyles.th}>AI Decision</th>
               <th style={baseStyles.th}>Confidence</th>
+              <th style={baseStyles.th}>Memory</th>
               <th style={baseStyles.th}>Processing Time</th>
               <th style={baseStyles.th}>Actions</th>
                 </tr>
@@ -358,8 +359,20 @@ export function LogsPage() {
                     <td style={{ ...baseStyles.td, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {log.incoming_text || '—'}
                     </td>
-                    <td style={{ ...baseStyles.td, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {log.matched_question || '—'}
+                    <td style={baseStyles.td}>
+                      <span style={{ 
+                        fontSize: 12, 
+                        padding: '2px 6px', 
+                        borderRadius: 4, 
+                        backgroundColor: log.final_decision?.includes('Chat') ? '#dbeafe' : 
+                                        log.final_decision?.includes('FAQ') ? '#dcfce7' : 
+                                        log.final_decision?.includes('Fallback') ? '#fef2f2' : '#f3f4f6',
+                        color: log.final_decision?.includes('Chat') ? '#1e40af' : 
+                               log.final_decision?.includes('FAQ') ? '#166534' : 
+                               log.final_decision?.includes('Fallback') ? '#dc2626' : '#374151'
+                      }}>
+                        {log.final_decision || 'Unknown'}
+                      </span>
                     </td>
                     <td style={baseStyles.td}>
                       <span style={{
@@ -372,6 +385,13 @@ export function LogsPage() {
                       <div style={{ fontSize: 11, color: '#6c757d', marginTop: 2 }}>
                         {log.ai_processing?.confidence_category || getConfidenceLabel(log.confidence)}
                       </div>
+                    </td>
+                    <td style={baseStyles.td}>
+                      {log.conversation_memory?.hasHistory ? (
+                        <span style={{ fontSize: 16 }} title={`${log.conversation_memory.messageCount} messages in memory`}>
+                          💾
+                        </span>
+                      ) : '—'}
                     </td>
                     <td style={baseStyles.td}>
                       {log.processing_time ? `${log.processing_time}ms` : '—'}
@@ -643,6 +663,23 @@ export function LogsPage() {
                       </div>
 
                       <div>
+                        <label style={{ ...baseStyles.label, marginBottom: 4 }}>Memory Status</label>
+                        <div style={{ padding: 8, backgroundColor: selectedLog.conversation_memory?.hasHistory ? '#e8f5e8' : '#f5f5f5', borderRadius: 6 }}>
+                          {selectedLog.conversation_memory?.hasHistory ? 
+                            `💾 ${selectedLog.conversation_memory.messageCount} messages` : 
+                            'No memory'
+                          }
+                        </div>
+                      </div>
+
+                      <div>
+                        <label style={{ ...baseStyles.label, marginBottom: 4 }}>General Knowledge</label>
+                        <div style={{ padding: 8, backgroundColor: '#e3f2fd', borderRadius: 6 }}>
+                          {selectedLog.ai_processing.general_knowledge_length || 0} characters
+                        </div>
+                      </div>
+
+                      <div>
                         <label style={{ ...baseStyles.label, marginBottom: 4 }}>Confidence Category</label>
                         <div style={{ 
                           padding: 8, 
@@ -696,6 +733,36 @@ export function LogsPage() {
                             </div>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Conversation Memory */}
+                  {showAIProcessing && selectedLog.conversation_memory?.hasHistory && (
+                    <div style={{ marginBottom: 24 }}>
+                      <label style={{ ...baseStyles.label, marginBottom: 8 }}>💾 Conversation Memory</label>
+                      <div style={{ padding: 12, backgroundColor: '#f0f9ff', borderRadius: 6, border: '1px solid #e0f2fe' }}>
+                        <div style={{ marginBottom: 8 }}>
+                          <strong>Phone Number:</strong> {selectedLog.conversation_memory.phoneNumber || 'Unknown'}
+                        </div>
+                        <div style={{ marginBottom: 8 }}>
+                          <strong>Message Count:</strong> {selectedLog.conversation_memory.messageCount || 0}
+                        </div>
+                        <div style={{ marginBottom: 8 }}>
+                          <strong>Has History:</strong> {selectedLog.conversation_memory.hasHistory ? 'Yes' : 'No'}
+                        </div>
+                        {selectedLog.conversation_memory.context && Object.keys(selectedLog.conversation_memory.context).length > 0 && (
+                          <div>
+                            <strong>Extracted Context:</strong>
+                            <div style={{ marginTop: 4, fontSize: 12, color: '#64748b' }}>
+                              {Object.entries(selectedLog.conversation_memory.context).map(([key, values]) => (
+                                <div key={key} style={{ marginBottom: 4 }}>
+                                  <strong>{key}:</strong> {Array.isArray(values) ? values.join(', ') : values}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

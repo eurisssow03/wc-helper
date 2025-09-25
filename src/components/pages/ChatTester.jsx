@@ -73,8 +73,8 @@ export function ChatTester({ onLogged }) {
       console.log('🤖 ChatTester: AI Service instance:', aiService);
       console.log('🤖 ChatTester: AI Service methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(aiService)));
       
-      // Process the message using unified AI service
-      const response = await aiService.processAndLog(userMessage, 'ChatTester');
+      // Process the message using unified AI service with phone number
+      const response = await aiService.processAndLog(userMessage, 'ChatTester', { phoneNumber: 'chat-tester' });
       
       console.log('🤖 ChatTester: Response received:', response);
       

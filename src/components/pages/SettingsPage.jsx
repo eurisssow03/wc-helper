@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { readLS, writeLS, STORAGE_KEYS } from '../../services/storage.js';
 import { baseStyles, breakpoints } from '../../utils/styles.js';
 import { defaultSettings, TZ, AI_MODEL_OPTIONS } from '../../utils/constants.js';
+import { conversationMemoryService } from '../../services/conversationMemoryService.js';
 
 export function SettingsPage({ onSaved }) {
   const [settings, setSettings] = useState(defaultSettings);
@@ -106,6 +107,7 @@ export function SettingsPage({ onSaved }) {
     { id: 'business', label: 'AI Working Hours', icon: '🕒' },
     { id: 'ai', label: 'AI Config', icon: '🤖' },
     { id: 'ai_rules', label: 'AI Rules', icon: '📋' },
+    { id: 'memory', label: 'Memory Management', icon: '💾' },
     { id: 'whatsapp', label: 'WhatsApp', icon: '📱' }
   ];
 
@@ -570,6 +572,138 @@ export function SettingsPage({ onSaved }) {
   };
 
 
+  const renderMemorySettings = () => {
+    const memoryStats = conversationMemoryService.getStats();
+    const allConversations = conversationMemoryService.getAllConversations();
+    
+    return (
+      <div style={{ display: 'grid', gap: 20 }}>
+        {/* Memory Statistics */}
+        <div style={baseStyles.card}>
+          <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>💾 Conversation Memory Statistics</h3>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+            <div style={{ padding: 16, backgroundColor: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#1e293b' }}>{memoryStats.totalConversations}</div>
+              <div style={{ fontSize: 14, color: '#64748b' }}>Total Conversations</div>
+            </div>
+            
+            <div style={{ padding: 16, backgroundColor: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#1e293b' }}>{memoryStats.totalMessages}</div>
+              <div style={{ fontSize: 14, color: '#64748b' }}>Total Messages</div>
+            </div>
+            
+            <div style={{ padding: 16, backgroundColor: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#1e293b' }}>{memoryStats.activeConversations}</div>
+              <div style={{ fontSize: 14, color: '#64748b' }}>Active (7 days)</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Memory Management Actions */}
+        <div style={baseStyles.card}>
+          <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>🗑️ Memory Management</h3>
+          
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <button
+              style={{
+                ...baseStyles.btnGhost,
+                backgroundColor: '#fef2f2',
+                borderColor: '#fecaca',
+                color: '#dc2626'
+              }}
+              onClick={() => {
+                if (confirm('Are you sure you want to clear ALL conversation memory? This action cannot be undone.')) {
+                  // Clear all memory
+                  Object.keys(allConversations).forEach(phoneNumber => {
+                    conversationMemoryService.clearConversation(phoneNumber);
+                  });
+                  alert('All conversation memory has been cleared.');
+                  onSaved?.();
+                }
+              }}
+            >
+              Clear All Memory
+            </button>
+            
+            <button
+              style={baseStyles.btnGhost}
+              onClick={() => {
+                // Export memory data
+                const dataStr = JSON.stringify(allConversations, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `conversation-memory-${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              Export Memory Data
+            </button>
+          </div>
+        </div>
+
+        {/* Recent Conversations */}
+        <div style={baseStyles.card}>
+          <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>📱 Recent Conversations</h3>
+          
+          {Object.keys(allConversations).length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 32, color: '#64748b' }}>
+              No conversation memory yet. Start chatting to build memory!
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: 12 }}>
+              {Object.entries(allConversations)
+                .sort(([,a], [,b]) => new Date(b.lastUpdated || 0) - new Date(a.lastUpdated || 0))
+                .slice(0, 10)
+                .map(([phoneNumber, conversation]) => (
+                <div key={phoneNumber} style={{ 
+                  padding: 16, 
+                  backgroundColor: '#f8fafc', 
+                  borderRadius: 8, 
+                  border: '1px solid #e2e8f0',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 600, color: '#1e293b' }}>📱 {phoneNumber}</div>
+                    <div style={{ fontSize: 14, color: '#64748b' }}>
+                      {conversation.messages?.length || 0} messages • 
+                      Last active: {conversation.lastUpdated ? new Date(conversation.lastUpdated).toLocaleString() : 'Never'}
+                    </div>
+                  </div>
+                  
+                  <button
+                    style={{
+                      ...baseStyles.btnGhost,
+                      fontSize: 12,
+                      padding: '4px 8px',
+                      backgroundColor: '#fef2f2',
+                      borderColor: '#fecaca',
+                      color: '#dc2626'
+                    }}
+                    onClick={() => {
+                      if (confirm(`Clear memory for ${phoneNumber}?`)) {
+                        conversationMemoryService.clearConversation(phoneNumber);
+                        alert(`Memory cleared for ${phoneNumber}`);
+                        onSaved?.();
+                      }
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderWhatsAppSettings = () => (
     <div style={{ display: 'grid', gap: 20 }}>
       {/* WhatsApp Business Configuration */}
@@ -886,6 +1020,7 @@ export function SettingsPage({ onSaved }) {
         case 'business': return renderBusinessSettings();
         case 'ai': return renderAISettings();
         case 'ai_rules': return renderAIRulesSettings();
+        case 'memory': return renderMemorySettings();
         case 'whatsapp': return renderWhatsAppSettings();
         default: return renderBusinessSettings();
       }

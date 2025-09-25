@@ -5,6 +5,7 @@ export const STORAGE_KEYS = {
   users: "wc_users",
   homestays: "wc_homestays",
   homestayGeneralKnowledge: "wc_homestay_general_knowledge",
+  conversationMemory: "wc_conversation_memory",
   faqs: "wc_faqs",
   logs: "wc_logs",
   settings: "wc_settings",

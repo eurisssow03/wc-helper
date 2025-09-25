@@ -8,6 +8,7 @@ import { simpleSimilarityScore, tagBasedMatch } from '../utils/nlp.js';
 import { rerankWithSignals, callChatModel } from '../utils/rag.js';
 import { buildEmbedding, cosineSim } from '../utils/embedding.js';
 import { nowISO } from '../utils/helpers.js';
+import { conversationMemoryService } from './conversationMemoryService.js';
 
 class AIService {
   constructor() {
@@ -136,6 +137,7 @@ class AIService {
   // Process message with unified AI logic
   async processMessage(userMessage, options = {}) {
     const startTime = Date.now();
+    const phoneNumber = options.phoneNumber || 'chat-tester';
     
     console.log('🚀 ===== AI PROCESSING STARTED =====');
     console.log('📝 Input Message:', `"${userMessage}"`);
@@ -143,6 +145,14 @@ class AIService {
     
     // Refresh data to get latest changes FIRST
     this.refreshData();
+    
+    // Load conversation memory for this phone number
+    const conversationContext = conversationMemoryService.getConversationContext(phoneNumber);
+    console.log('💾 Conversation Memory:');
+    console.log('  📱 Phone Number:', phoneNumber);
+    console.log('  💬 Recent Messages:', conversationContext.recentMessages.length);
+    console.log('  📋 Context Keys:', Object.keys(conversationContext.context).length);
+    console.log('  📝 Summary Length:', conversationContext.summary.length);
     
     console.log('📊 Data Status:');
     console.log('  📚 Total FAQs:', this.faqs.length);
@@ -458,28 +468,42 @@ class AIService {
     console.log('  📊 Top Match Confidence:', confidence.toFixed(4));
     
     try {
-      // Enhanced system prompt with homestay data and general knowledge as knowledge base
+      // Enhanced system prompt with homestay data, general knowledge, and conversation memory
+      const conversationSummary = conversationContext.summary || 'No previous conversation history.';
+      const recentMessages = conversationContext.recentMessages.slice(-3).map(msg => 
+        `${msg.isFromCustomer ? 'Customer' : 'Assistant'}: ${msg.message}`
+      ).join('\n');
+      
       const systemPrompt = `You are a professional homestay customer service assistant. 
 
 KNOWLEDGE BASE:
 - FAQ Information: Use the provided FAQ context as your primary knowledge source
 - Homestay Data: Use the homestay information as supplementary knowledge to enhance your responses
 - General Knowledge: Use the general homestay knowledge base for additional context and information
+- Conversation Memory: Use previous conversation history to provide personalized and contextual responses
 
 RESPONSE GUIDELINES:
 1. Always base your response on the FAQ information provided in the context
 2. Use homestay data to supplement and enrich your FAQ-based answers
 3. Use general knowledge to provide additional context and comprehensive information
-4. If the top FAQ match has high confidence, prioritize that information
-5. If no FAQ matches well, use homestay data and general knowledge to provide helpful information
-6. Be conversational, helpful, and professional
-7. Provide specific details about properties, amenities, and services when relevant
-8. Always maintain a welcoming and informative tone
+4. Use conversation memory to provide personalized responses and maintain context
+5. If the top FAQ match has high confidence, prioritize that information
+6. If no FAQ matches well, use homestay data, general knowledge, and conversation memory
+7. Be conversational, helpful, and professional
+8. Provide specific details about properties, amenities, and services when relevant
+9. Always maintain a welcoming and informative tone
+10. Reference previous conversation when relevant to show continuity
 
-Remember: FAQ information takes TOP PRIORITY, but homestay data and general knowledge should be used to make responses more comprehensive and helpful.
+Remember: FAQ information takes TOP PRIORITY, but homestay data, general knowledge, and conversation memory should be used to make responses more comprehensive and personalized.
 
 GENERAL KNOWLEDGE BASE:
-${this.homestayGeneralKnowledge || 'No general knowledge available.'}`;
+${this.homestayGeneralKnowledge || 'No general knowledge available.'}
+
+CONVERSATION HISTORY:
+${conversationSummary}
+
+RECENT MESSAGES:
+${recentMessages || 'No recent messages.'}`;
 
       answer = await callChatModel({
         settings: this.settings,
@@ -503,6 +527,28 @@ ${this.homestayGeneralKnowledge || 'No general knowledge available.'}`;
       processingDetails.processingSteps.push('Chat model failed, no response generated');
     }
 
+    // Save conversation memory
+    if (answer) {
+      // Add customer message to memory
+      conversationMemoryService.addMessage(phoneNumber, userMessage, true, {
+        source: 'AIService',
+        timestamp: nowISO()
+      });
+      
+      // Add AI response to memory
+      conversationMemoryService.addMessage(phoneNumber, answer, false, {
+        source: 'AIService',
+        confidence: confidence,
+        matchedQuestion: matchedQuestion,
+        processingTime: processingTime,
+        timestamp: nowISO()
+      });
+      
+      // Generate conversation summary
+      const summary = conversationMemoryService.generateSummary(phoneNumber);
+      console.log('💾 Memory: Conversation summary updated');
+    }
+
     const result = {
       answer,
       confidence,
@@ -510,7 +556,12 @@ ${this.homestayGeneralKnowledge || 'No general knowledge available.'}`;
       processingTime,
       contextItems,
       source: 'AIService',
-      processingDetails
+      processingDetails,
+      conversationMemory: {
+        phoneNumber: phoneNumber,
+        messageCount: conversationContext.recentMessages.length,
+        hasHistory: conversationContext.recentMessages.length > 0
+      }
     };
 
     const totalProcessingTime = Date.now() - startTime;

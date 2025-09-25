@@ -181,12 +181,60 @@ function getFallbackAnswer(userMessage, responseTemplates = null) {
   return answer;
 }
 
+// Import conversation memory service (we'll need to create a simplified version for webhook)
+// For now, we'll use a simple in-memory storage for webhook
+const webhookMemory = {};
+
+// Simple memory functions for webhook
+function getWebhookMemory(phoneNumber) {
+  const normalizedPhone = phoneNumber.replace(/[^\d]/g, '');
+  return webhookMemory[normalizedPhone] || {
+    messages: [],
+    lastUpdated: null,
+    context: {}
+  };
+}
+
+function addWebhookMessage(phoneNumber, message, isFromCustomer = true) {
+  const normalizedPhone = phoneNumber.replace(/[^\d]/g, '');
+  
+  if (!webhookMemory[normalizedPhone]) {
+    webhookMemory[normalizedPhone] = {
+      messages: [],
+      lastUpdated: null,
+      context: {}
+    };
+  }
+
+  const messageEntry = {
+    id: Date.now() + Math.random(),
+    message: message,
+    isFromCustomer: isFromCustomer,
+    timestamp: new Date().toISOString()
+  };
+
+  webhookMemory[normalizedPhone].messages.push(messageEntry);
+  webhookMemory[normalizedPhone].lastUpdated = new Date().toISOString();
+
+  // Keep only last 10 messages for webhook
+  if (webhookMemory[normalizedPhone].messages.length > 10) {
+    webhookMemory[normalizedPhone].messages = webhookMemory[normalizedPhone].messages.slice(-10);
+  }
+}
+
 // Main processing function (matching web app logic)
 async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = [], homestayGeneralKnowledge = "") {
   console.log('🚀 ===== WEBHOOK AI PROCESSING STARTED =====');
   console.log('📝 Input Message:', `"${userMessage}"`);
   console.log('📞 From Number:', fromNumber);
   console.log('⏰ Start Time:', new Date().toISOString());
+  // Load conversation memory for this phone number
+  const conversationMemory = getWebhookMemory(fromNumber);
+  console.log('💾 Conversation Memory:');
+  console.log('  📱 Phone Number:', fromNumber);
+  console.log('  💬 Recent Messages:', conversationMemory.messages.length);
+  console.log('  📋 Context Keys:', Object.keys(conversationMemory.context).length);
+  
   console.log('📊 Data Status:');
   console.log('  📚 Total FAQs:', faqs.length);
   console.log('  🏨 Homestays:', homestays.length);
@@ -330,6 +378,12 @@ async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = [
   
   // Return null answer - no response
   answer = null;
+
+  // Save conversation memory (even for no response)
+  addWebhookMessage(fromNumber, userMessage, true);
+  if (answer) {
+    addWebhookMessage(fromNumber, answer, false);
+  }
 
   const result = {
     answer,
