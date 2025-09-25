@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Login Page</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: system-ui, Arial, sans-serif;
+            background: #f8fafc;
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .debug {
+            margin-top: 16px;
+            padding: 12px;
+            background: #f3f4f6;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Test Login Page</h2>
+        <p>This is a test to verify the login page is working correctly.</p>
+        
+        <div class="form-group">
+            <label>Email:</label>
+            <input type="email" id="email" value="admin@demo.com">
+        </div>
+        
+        <div class="form-group">
+            <label>Password:</label>
+            <input type="password" id="password" value="Passw0rd!">
+        </div>
+        
+        <button onclick="testLogin()">Test Login</button>
+        
+        <div class="debug">
+            <h4>Debug Information:</h4>
+            <div id="debug-info"></div>
+        </div>
+    </div>
+
+    <script>
+        function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            // Clear any existing session
+            localStorage.removeItem('wc_session');
+            
+            // Simulate login process
+            const debugInfo = document.getElementById('debug-info');
+            debugInfo.innerHTML = `
+                <p><strong>Email:</strong> ${email}</p>
+                <p><strong>Password:</strong> ${password}</p>
+                <p><strong>Session cleared:</strong> Yes</p>
+                <p><strong>Current time:</strong> ${new Date().toISOString()}</p>
+                <p><strong>localStorage keys:</strong> ${Object.keys(localStorage).join(', ')}</p>
+            `;
+            
+            // Test if we can access the main app
+            setTimeout(() => {
+                window.location.href = 'http://localhost:5173';
+            }, 2000);
+        }
+        
+        // Show current localStorage state
+        document.addEventListener('DOMContentLoaded', () => {
+            const debugInfo = document.getElementById('debug-info');
+            debugInfo.innerHTML = `
+                <p><strong>Current localStorage keys:</strong> ${Object.keys(localStorage).join(', ')}</p>
+                <p><strong>wc_session value:</strong> ${localStorage.getItem('wc_session') || 'null'}</p>
+                <p><strong>wc_users value:</strong> ${localStorage.getItem('wc_users') || 'null'}</p>
+            `;
+        });
+    </script>
+</body>
+</html>

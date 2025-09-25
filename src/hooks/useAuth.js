@@ -42,7 +42,11 @@ async function initOnce() {
 }
 
 export function useAuth() {
-  const [session, setSession] = useState(() => readLS(STORAGE_KEYS.session, null));
+  const [session, setSession] = useState(() => {
+    const storedSession = readLS(STORAGE_KEYS.session, null);
+    console.log('🔍 useAuth: Initial session from localStorage:', storedSession);
+    return storedSession;
+  });
   const [users, setUsers] = useState(() => readLS(STORAGE_KEYS.users, null));
   
   useEffect(() => { 

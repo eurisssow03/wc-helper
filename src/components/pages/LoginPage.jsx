@@ -17,9 +17,12 @@ export function LoginPage({ onLogin }) {
   };
   
   return (
-    <div style={{ display: "grid", placeItems: "center", height: "100vh", background: "#f8fafc" }}>
-      <div style={{ ...baseStyles.card, width: 380 }}>
+    <div className="login-container">
+      <div className="login-card">
         <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 12 }}>Login</div>
+        <div style={{ fontSize: 12, marginBottom: 12, color: "#64748b" }}>
+          Debug: If you see this, the login page is working correctly.
+        </div>
         <form onSubmit={submit}>
           <div style={{ marginBottom: 12 }}>
             <div style={baseStyles.label}>Email</div>
@@ -50,6 +53,21 @@ export function LoginPage({ onLogin }) {
           <div style={{ fontSize: 12, marginTop: 12, color: "#64748b" }}>
             Default account: admin@demo.com / Passw0rd!
           </div>
+          <button 
+            type="button"
+            onClick={() => {
+              localStorage.removeItem('wc_session');
+              window.location.reload();
+            }}
+            style={{ 
+              ...baseStyles.btnGhost, 
+              width: "100%", 
+              marginTop: 8,
+              fontSize: 12
+            }}
+          >
+            Clear Session & Reload
+          </button>
         </form>
       </div>
     </div>

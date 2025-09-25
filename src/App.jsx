@@ -52,8 +52,21 @@ function AppShell() {
   const [active, setActive] = useState("Dashboard");
   const { show, node: toast } = useToast();
 
+  // Debug: Log session status
+  console.log('🔍 AppShell: Session status:', session);
   
-  if (!session) return <LoginPage onLogin={login} />;
+  // Force logout for debugging (remove this in production)
+  const forceLogout = () => {
+    localStorage.removeItem('wc_session');
+    window.location.reload();
+  };
+  
+  if (!session) {
+    console.log('🔍 AppShell: No session, showing login page');
+    return <LoginPage onLogin={login} />;
+  }
+  
+  console.log('🔍 AppShell: Session exists, showing dashboard');
   
   return (
     <div className="app-container">
@@ -85,6 +98,7 @@ function AppShell() {
         </div>
         <div style={{ height: 16 }} />
         <button style={baseStyles.btnGhost} onClick={logout}>Logout</button>
+        <button style={{...baseStyles.btnGhost, marginTop: 8, fontSize: 12}} onClick={forceLogout}>Force Logout (Debug)</button>
         <div style={{ 
           marginTop: 12, 
           fontSize: 12, 
