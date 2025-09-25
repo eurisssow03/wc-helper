@@ -14,11 +14,13 @@ class AIService {
     this.settings = readLS(STORAGE_KEYS.settings, {});
     this.faqs = readLS(STORAGE_KEYS.faqs, []);
     this.homestays = readLS(STORAGE_KEYS.homestays, []);
+    this.homestayGeneralKnowledge = readLS(STORAGE_KEYS.homestayGeneralKnowledge, "");
     this.apiKey = null;
     this.apiKeyLoaded = false;
     
     console.log('🏗️ AIService: Constructor - FAQs:', this.faqs.length, 'Homestays:', this.homestays.length);
     console.log('🏗️ AIService: Active FAQs:', this.getActiveFAQs().length);
+    console.log('🏗️ AIService: General Knowledge Length:', this.homestayGeneralKnowledge.length, 'characters');
     
     // Ensure we have valid settings
     this.initializeSettings();
@@ -57,9 +59,11 @@ class AIService {
     this.settings = readLS(STORAGE_KEYS.settings, {});
     this.faqs = readLS(STORAGE_KEYS.faqs, []);
     this.homestays = readLS(STORAGE_KEYS.homestays, []);
+    this.homestayGeneralKnowledge = readLS(STORAGE_KEYS.homestayGeneralKnowledge, "");
     
     console.log('🔄 AIService: Data refreshed - FAQs:', this.faqs.length, 'Homestays:', this.homestays.length);
     console.log('🔄 AIService: Active FAQs:', this.getActiveFAQs().length);
+    console.log('🔄 AIService: General Knowledge Length:', this.homestayGeneralKnowledge.length, 'characters');
   }
 
   // Force refresh data (public method)
@@ -454,23 +458,28 @@ class AIService {
     console.log('  📊 Top Match Confidence:', confidence.toFixed(4));
     
     try {
-      // Enhanced system prompt with homestay data as knowledge base
+      // Enhanced system prompt with homestay data and general knowledge as knowledge base
       const systemPrompt = `You are a professional homestay customer service assistant. 
 
 KNOWLEDGE BASE:
 - FAQ Information: Use the provided FAQ context as your primary knowledge source
 - Homestay Data: Use the homestay information as supplementary knowledge to enhance your responses
+- General Knowledge: Use the general homestay knowledge base for additional context and information
 
 RESPONSE GUIDELINES:
 1. Always base your response on the FAQ information provided in the context
 2. Use homestay data to supplement and enrich your FAQ-based answers
-3. If the top FAQ match has high confidence, prioritize that information
-4. If no FAQ matches well, use homestay data to provide helpful information
-5. Be conversational, helpful, and professional
-6. Provide specific details about properties, amenities, and services when relevant
-7. Always maintain a welcoming and informative tone
+3. Use general knowledge to provide additional context and comprehensive information
+4. If the top FAQ match has high confidence, prioritize that information
+5. If no FAQ matches well, use homestay data and general knowledge to provide helpful information
+6. Be conversational, helpful, and professional
+7. Provide specific details about properties, amenities, and services when relevant
+8. Always maintain a welcoming and informative tone
 
-Remember: FAQ information takes TOP PRIORITY, but homestay data should be used to make responses more comprehensive and helpful.`;
+Remember: FAQ information takes TOP PRIORITY, but homestay data and general knowledge should be used to make responses more comprehensive and helpful.
+
+GENERAL KNOWLEDGE BASE:
+${this.homestayGeneralKnowledge || 'No general knowledge available.'}`;
 
       answer = await callChatModel({
         settings: this.settings,

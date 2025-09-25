@@ -182,7 +182,7 @@ function getFallbackAnswer(userMessage, responseTemplates = null) {
 }
 
 // Main processing function (matching web app logic)
-async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = []) {
+async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = [], homestayGeneralKnowledge = "") {
   console.log('🚀 ===== WEBHOOK AI PROCESSING STARTED =====');
   console.log('📝 Input Message:', `"${userMessage}"`);
   console.log('📞 From Number:', fromNumber);
@@ -190,6 +190,7 @@ async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = [
   console.log('📊 Data Status:');
   console.log('  📚 Total FAQs:', faqs.length);
   console.log('  🏨 Homestays:', homestays.length);
+  console.log('  🧠 General Knowledge:', homestayGeneralKnowledge.length, 'characters');
   
   const startTime = Date.now();
   
@@ -359,6 +360,7 @@ async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = [
         'Reranking with signals completed',
         'Top ranking FAQ selected as primary context',
         'Homestay data available as knowledge base',
+        `General knowledge available (${homestayGeneralKnowledge.length} characters)`,
         'API key validation failed - no response generated'
       ]
     }

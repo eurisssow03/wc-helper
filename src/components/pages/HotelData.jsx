@@ -10,6 +10,7 @@ export function HomestayData({ onSaved }) {
   const [query, setQuery] = useState("");
   const [list, setList] = useState(() => readLS(STORAGE_KEYS.homestays, []));
   const [editing, setEditing] = useState(null);
+  const [generalKnowledge, setGeneralKnowledge] = useState(() => readLS(STORAGE_KEYS.homestayGeneralKnowledge, ""));
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase(); 
@@ -66,8 +67,92 @@ export function HomestayData({ onSaved }) {
     onSaved?.();
   };
 
+  const saveGeneralKnowledge = async () => {
+    writeLS(STORAGE_KEYS.homestayGeneralKnowledge, generalKnowledge);
+    
+    // Sync to webhook server
+    try {
+      const webhookUrl = process.env.REACT_APP_WEBHOOK_URL || 'https://wc-helper.onrender.com';
+      const response = await fetch(`${webhookUrl}/api/sync/homestay-general-knowledge`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          generalKnowledge: generalKnowledge
+        })
+      });
+      
+      if (response.ok) {
+        console.log('✅ General knowledge synced to webhook server');
+      } else {
+        console.warn('⚠️ Failed to sync general knowledge to webhook server');
+      }
+    } catch (error) {
+      console.warn('⚠️ Error syncing general knowledge to webhook server:', error);
+    }
+    
+    onSaved?.();
+    alert("General knowledge saved successfully!");
+  };
+
   return (
     <div>
+      {/* General Knowledge Section */}
+      <div style={baseStyles.card}>
+        <div style={{ marginBottom: 16 }}>
+          <h3 style={{ margin: 0, marginBottom: 8, fontSize: 18, fontWeight: 600, color: '#1e293b' }}>
+            🧠 Homestay General Knowledge
+          </h3>
+          <p style={{ margin: 0, fontSize: 14, color: '#64748b', marginBottom: 12 }}>
+            This information will be used as part of the AI knowledge base to provide better responses to customer queries.
+          </p>
+        </div>
+        
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ ...baseStyles.label, marginBottom: 8, display: 'block' }}>
+            General Knowledge Base
+          </label>
+          <textarea
+            style={{
+              ...baseStyles.input,
+              height: 120,
+              resize: 'vertical',
+              fontFamily: 'inherit',
+              lineHeight: 1.5
+            }}
+            value={generalKnowledge}
+            onChange={e => setGeneralKnowledge(e.target.value)}
+            placeholder="Enter general homestay knowledge, policies, procedures, and information that will help the AI provide better responses to customers. For example:
+
+• Check-in process and requirements
+• General policies and rules
+• Common amenities and services
+• Booking procedures
+• Payment methods accepted
+• Cancellation policies
+• Contact information
+• Emergency procedures
+• Local attractions and recommendations
+• Transportation options
+• Any other relevant information that customers might ask about"
+          />
+        </div>
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: 12, color: '#64748b' }}>
+            Character count: {generalKnowledge.length}
+          </div>
+          <button 
+            style={baseStyles.btnPrimary} 
+            onClick={saveGeneralKnowledge}
+            disabled={!generalKnowledge.trim()}
+          >
+            Save General Knowledge
+          </button>
+        </div>
+      </div>
+
       <div style={baseStyles.card}>
         <div className="flex-row">
           <input 

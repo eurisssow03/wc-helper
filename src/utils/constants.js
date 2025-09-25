@@ -4,6 +4,7 @@ export const TZ = "Asia/Kuala_Lumpur";
 export const STORAGE_KEYS = {
   users: "wc_users",
   homestays: "wc_homestays",
+  homestayGeneralKnowledge: "wc_homestay_general_knowledge",
   faqs: "wc_faqs",
   logs: "wc_logs",
   settings: "wc_settings",

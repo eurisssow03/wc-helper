@@ -26,6 +26,9 @@ function initializeGlobalStorage() {
   if (!global.homestays) {
     global.homestays = [];
   }
+  if (!global.homestayGeneralKnowledge) {
+    global.homestayGeneralKnowledge = "";
+  }
   if (!global.whatsappMessages) {
     global.whatsappMessages = [];
   }
@@ -41,12 +44,14 @@ async function processWebhookMessage(userMessage, fromNumber) {
     // Get FAQs from global storage
     let faqs = global.faqs || [];
     let homestays = global.homestays || [];
+    let homestayGeneralKnowledge = global.homestayGeneralKnowledge || "";
     
     console.log(`📚 Using ${faqs.length} total FAQs from global storage`);
     console.log(`🏨 Using ${homestays.length} homestays from global storage`);
+    console.log(`🧠 Using ${homestayGeneralKnowledge.length} characters of general knowledge`);
     
     // Use the unified AI processor
-    const result = await processMessageWithAI(userMessage, fromNumber, faqs, homestays);
+    const result = await processMessageWithAI(userMessage, fromNumber, faqs, homestays, homestayGeneralKnowledge);
     
     return result;
 
@@ -574,6 +579,37 @@ app.post('/api/sync/homestays', (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to sync homestay data'
+    });
+  }
+});
+
+// API endpoint to sync homestay general knowledge from web app
+app.post('/api/sync/homestay-general-knowledge', (req, res) => {
+  try {
+    const { generalKnowledge } = req.body;
+    
+    if (typeof generalKnowledge !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'General knowledge must be a string'
+      });
+    }
+    
+    // Store general knowledge in global storage
+    global.homestayGeneralKnowledge = generalKnowledge;
+    
+    console.log(`🧠 Synced ${generalKnowledge.length} characters of general knowledge from web app`);
+    
+    res.json({
+      success: true,
+      message: `Synced ${generalKnowledge.length} characters of general knowledge`,
+      length: generalKnowledge.length
+    });
+  } catch (error) {
+    console.error('❌ Error syncing general knowledge:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to sync general knowledge'
     });
   }
 });
