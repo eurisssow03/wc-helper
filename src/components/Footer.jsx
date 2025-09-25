@@ -18,16 +18,13 @@ export function Footer() {
         </span>
         <span style={{ marginRight: '16px' }}>
           <a 
-            href="#legal" 
+            href="/privacy-policy.html" 
+            target="_blank"
+            rel="noopener noreferrer"
             style={{ 
               color: '#0d6efd', 
               textDecoration: 'none',
               cursor: 'pointer'
-            }}
-            onClick={(e) => {
-              e.preventDefault();
-              // This would be handled by the parent component to switch to Legal page
-              window.dispatchEvent(new CustomEvent('navigateToLegal'));
             }}
           >
             Privacy Policy
@@ -35,16 +32,13 @@ export function Footer() {
         </span>
         <span>
           <a 
-            href="#terms" 
+            href="/terms-of-service.html" 
+            target="_blank"
+            rel="noopener noreferrer"
             style={{ 
               color: '#0d6efd', 
               textDecoration: 'none',
               cursor: 'pointer'
-            }}
-            onClick={(e) => {
-              e.preventDefault();
-              // This would be handled by the parent component to switch to Legal page
-              window.dispatchEvent(new CustomEvent('navigateToLegal'));
             }}
           >
             Terms of Service

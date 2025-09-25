@@ -21,7 +21,6 @@ import { ChatTester } from "./components/pages/ChatTester.jsx";
 import { UserManagementPage } from "./components/pages/UserManagementPage.jsx";
 import { SettingsPage } from "./components/pages/SettingsPage.jsx";
 import { LogsPage } from "./components/pages/LogsPage.jsx";
-import { LegalPage } from "./components/pages/LegalPage.jsx";
 import { Footer } from "./components/Footer.jsx";
 
 export default function App() {
@@ -53,15 +52,6 @@ function AppShell() {
   const [active, setActive] = useState("Dashboard");
   const { show, node: toast } = useToast();
 
-  // Handle navigation from footer links
-  React.useEffect(() => {
-    const handleNavigateToLegal = () => {
-      setActive("Legal");
-    };
-
-    window.addEventListener('navigateToLegal', handleNavigateToLegal);
-    return () => window.removeEventListener('navigateToLegal', handleNavigateToLegal);
-  }, []);
   
   if (!session) return <LoginPage onLogin={login} />;
   
@@ -117,7 +107,6 @@ function AppShell() {
           {active === "User Management" && <UserManagementPage onSaved={() => show("User Saved")} />}
           {active === "Settings" && <SettingsPage onSaved={() => show("Settings Saved")} />}
           {active === "Logs" && <LogsPage />}
-          {active === "Legal" && <LegalPage />}
         </div>
         <Footer />
       </main>
