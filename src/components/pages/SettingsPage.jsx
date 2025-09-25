@@ -8,6 +8,17 @@ export function SettingsPage({ onSaved }) {
   const [settings, setSettings] = useState(defaultSettings);
   const [isDirty, setIsDirty] = useState(false);
   const [activeTab, setActiveTab] = useState('business');
+  const [databaseSettings, setDatabaseSettings] = useState({
+    host: 'localhost',
+    port: 5432,
+    database: 'wc_helper',
+    username: 'postgres',
+    password: '',
+    ssl: false
+  });
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [migrationStatus, setMigrationStatus] = useState('idle');
 
   useEffect(() => {
     const savedSettings = readLS(STORAGE_KEYS.settings, defaultSettings);
@@ -46,6 +57,17 @@ export function SettingsPage({ onSaved }) {
     
     console.log('🔧 SettingsPage: Merged settings:', mergedSettings);
     setSettings(mergedSettings);
+    
+    // Load database settings
+    const savedDatabaseSettings = readLS('wc_database_settings', {
+      host: 'localhost',
+      port: 5432,
+      database: 'wc_helper',
+      username: 'postgres',
+      password: '',
+      ssl: false
+    });
+    setDatabaseSettings(savedDatabaseSettings);
   }, []);
 
   const handleChange = (key, value) => {
@@ -71,6 +93,83 @@ export function SettingsPage({ onSaved }) {
     writeLS(STORAGE_KEYS.settings, settings);
     setIsDirty(false);
     if (onSaved) onSaved();
+  };
+
+  const handleDatabaseChange = (key, value) => {
+    setDatabaseSettings(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handleDatabaseSave = () => {
+    writeLS('wc_database_settings', databaseSettings);
+    console.log('🐘 Database settings saved:', databaseSettings);
+  };
+
+  const testDatabaseConnection = async () => {
+    setIsTestingConnection(true);
+    setConnectionStatus('testing');
+    
+    try {
+      const response = await fetch('/api/postgres/health', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Database-Host': databaseSettings.host,
+          'X-Database-Port': databaseSettings.port.toString(),
+          'X-Database-Name': databaseSettings.database,
+          'X-Database-User': databaseSettings.username,
+          'X-Database-Password': databaseSettings.password,
+          'X-Database-SSL': databaseSettings.ssl.toString()
+        }
+      });
+      
+      if (response.ok) {
+        setConnectionStatus('connected');
+        console.log('✅ Database connection successful');
+      } else {
+        setConnectionStatus('error');
+        console.error('❌ Database connection failed');
+      }
+    } catch (error) {
+      setConnectionStatus('error');
+      console.error('❌ Database connection error:', error);
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
+  const migrateToPostgreSQL = async () => {
+    setMigrationStatus('migrating');
+    
+    try {
+      const response = await fetch('/api/postgres/migrate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Database-Host': databaseSettings.host,
+          'X-Database-Port': databaseSettings.port.toString(),
+          'X-Database-Name': databaseSettings.database,
+          'X-Database-User': databaseSettings.username,
+          'X-Database-Password': databaseSettings.password,
+          'X-Database-SSL': databaseSettings.ssl.toString()
+        }
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        setMigrationStatus('completed');
+        console.log('✅ Migration completed:', result);
+      } else {
+        setMigrationStatus('error');
+        console.error('❌ Migration failed:', result);
+      }
+    } catch (error) {
+      setMigrationStatus('error');
+      console.error('❌ Migration error:', error);
+    }
   };
 
   const handleReset = () => {
@@ -107,6 +206,7 @@ export function SettingsPage({ onSaved }) {
     { id: 'business', label: 'AI Working Hours', icon: '🕒' },
     { id: 'ai', label: 'AI Config', icon: '🤖' },
     { id: 'ai_rules', label: 'AI Rules', icon: '📋' },
+    { id: 'database', label: 'Database', icon: '🐘' },
     { id: 'memory', label: 'Memory Management', icon: '💾' },
     { id: 'whatsapp', label: 'WhatsApp', icon: '📱' }
   ];
@@ -316,23 +416,23 @@ export function SettingsPage({ onSaved }) {
     ];
 
     return (
-      <div style={{ display: 'grid', gap: 20 }}>
-        <div style={baseStyles.card}>
+    <div style={{ display: 'grid', gap: 20 }}>
+      <div style={baseStyles.card}>
           <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>AI Working Hours</h3>
-          
-          <div style={{ marginBottom: 16 }}>
-            <label style={baseStyles.label}>Timezone</label>
-            <select
+        
+        <div style={{ marginBottom: 16 }}>
+          <label style={baseStyles.label}>Timezone</label>
+          <select
               value={businessHours.tz}
-              onChange={(e) => handleNestedChange('businessHours', 'tz', e.target.value)}
-              style={baseStyles.select}
-            >
-              <option value="Asia/Kuala_Lumpur">Asia/Kuala_Lumpur (UTC+8)</option>
-              <option value="Asia/Shanghai">Asia/Shanghai (UTC+8)</option>
-              <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
-              <option value="America/New_York">America/New_York (UTC-5)</option>
-              <option value="Europe/London">Europe/London (UTC+0)</option>
-            </select>
+            onChange={(e) => handleNestedChange('businessHours', 'tz', e.target.value)}
+            style={baseStyles.select}
+          >
+            <option value="Asia/Kuala_Lumpur">Asia/Kuala_Lumpur (UTC+8)</option>
+            <option value="Asia/Shanghai">Asia/Shanghai (UTC+8)</option>
+            <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
+            <option value="America/New_York">America/New_York (UTC-5)</option>
+            <option value="Europe/London">Europe/London (UTC+0)</option>
+          </select>
           </div>
 
           <div style={{ marginBottom: 16 }}>
@@ -420,10 +520,10 @@ export function SettingsPage({ onSaved }) {
               
               <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>
                 Configure working hours for each day of the week. AI will only respond during enabled hours.
-              </div>
-              
-              <div style={{
-                display: 'grid',
+        </div>
+
+        <div style={{ 
+          display: 'grid', 
                 gap: 8,
                 backgroundColor: '#f8f9fa',
                 padding: 16,
@@ -465,9 +565,9 @@ export function SettingsPage({ onSaved }) {
                       {day.label}
                     </div>
                     
-                    <div>
-                      <input
-                        type="time"
+          <div>
+            <input
+              type="time"
                         value={businessHours[day.key]?.start || '09:00'}
                         onChange={(e) => handleNestedChange('businessHours', day.key, {
                           ...businessHours[day.key],
@@ -479,12 +579,12 @@ export function SettingsPage({ onSaved }) {
                           padding: '8px 10px',
                           width: '100%'
                         }}
-                      />
-                    </div>
+            />
+          </div>
                     
-                    <div>
-                      <input
-                        type="time"
+          <div>
+            <input
+              type="time"
                         value={businessHours[day.key]?.end || '18:00'}
                         onChange={(e) => handleNestedChange('businessHours', day.key, {
                           ...businessHours[day.key],
@@ -496,8 +596,8 @@ export function SettingsPage({ onSaved }) {
                           padding: '8px 10px',
                           width: '100%'
                         }}
-                      />
-                    </div>
+            />
+          </div>
                     
                     <div style={{ display: 'flex', justifyContent: 'center' }}>
                       <input
@@ -509,18 +609,18 @@ export function SettingsPage({ onSaved }) {
                         })}
                         style={{ transform: 'scale(1.3)' }}
                       />
-                    </div>
+        </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          <div style={{ 
+        <div style={{ 
             padding: 16, 
             backgroundColor: settings.alwaysOn ? '#e8f5e8' : '#f0f9ff', 
-            borderRadius: 8, 
-            fontSize: 14, 
+          borderRadius: 8, 
+          fontSize: 14, 
             color: '#495057',
             border: `1px solid ${settings.alwaysOn ? '#4caf50' : '#0ea5e9'}`
           }}>
@@ -531,7 +631,7 @@ export function SettingsPage({ onSaved }) {
               <strong style={{ color: settings.alwaysOn ? '#2e7d32' : '#0369a1' }}>
                 {settings.alwaysOn ? '24/7 Operation Mode' : 'Normal Mode'}
               </strong>
-            </div>
+        </div>
             
             <div style={{ fontSize: 12, color: '#6c757d', marginBottom: 8 }}>
               <strong>Timezone:</strong> {TZ}
@@ -566,9 +666,9 @@ export function SettingsPage({ onSaved }) {
               </div>
             )}
           </div>
-        </div>
       </div>
-    );
+    </div>
+  );
   };
 
 
@@ -577,26 +677,26 @@ export function SettingsPage({ onSaved }) {
     const allConversations = conversationMemoryService.getAllConversations();
     
     return (
-      <div style={{ display: 'grid', gap: 20 }}>
+    <div style={{ display: 'grid', gap: 20 }}>
         {/* Memory Statistics */}
-        <div style={baseStyles.card}>
+      <div style={baseStyles.card}>
           <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>💾 Conversation Memory Statistics</h3>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
             <div style={{ padding: 16, backgroundColor: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
               <div style={{ fontSize: 24, fontWeight: 700, color: '#1e293b' }}>{memoryStats.totalConversations}</div>
               <div style={{ fontSize: 14, color: '#64748b' }}>Total Conversations</div>
-            </div>
+          </div>
             
             <div style={{ padding: 16, backgroundColor: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
               <div style={{ fontSize: 24, fontWeight: 700, color: '#1e293b' }}>{memoryStats.totalMessages}</div>
               <div style={{ fontSize: 14, color: '#64748b' }}>Total Messages</div>
-            </div>
-            
+        </div>
+
             <div style={{ padding: 16, backgroundColor: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
               <div style={{ fontSize: 24, fontWeight: 700, color: '#1e293b' }}>{memoryStats.activeConversations}</div>
               <div style={{ fontSize: 14, color: '#64748b' }}>Active (7 days)</div>
-            </div>
+          </div>
           </div>
         </div>
 
@@ -642,11 +742,11 @@ export function SettingsPage({ onSaved }) {
             >
               Export Memory Data
             </button>
-          </div>
         </div>
+      </div>
 
         {/* Recent Conversations */}
-        <div style={baseStyles.card}>
+      <div style={baseStyles.card}>
           <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>📱 Recent Conversations</h3>
           
           {Object.keys(allConversations).length === 0 ? (
@@ -662,7 +762,7 @@ export function SettingsPage({ onSaved }) {
                 <div key={phoneNumber} style={{ 
                   padding: 16, 
                   backgroundColor: '#f8fafc', 
-                  borderRadius: 8, 
+            borderRadius: 8, 
                   border: '1px solid #e2e8f0',
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -673,8 +773,8 @@ export function SettingsPage({ onSaved }) {
                     <div style={{ fontSize: 14, color: '#64748b' }}>
                       {conversation.messages?.length || 0} messages • 
                       Last active: {conversation.lastUpdated ? new Date(conversation.lastUpdated).toLocaleString() : 'Never'}
-                    </div>
-                  </div>
+          </div>
+        </div>
                   
                   <button
                     style={{
@@ -699,9 +799,9 @@ export function SettingsPage({ onSaved }) {
               ))}
             </div>
           )}
-        </div>
       </div>
-    );
+    </div>
+  );
   };
 
   const renderWhatsAppSettings = () => (
@@ -1014,14 +1114,309 @@ export function SettingsPage({ onSaved }) {
     </div>
   );
 
+  const renderDatabaseSettings = () => (
+    <div style={{ display: 'grid', gap: 20 }}>
+      {/* Info Card */}
+      <div style={{
+        ...baseStyles.card,
+        backgroundColor: '#f0f9ff',
+        border: '1px solid #0ea5e9',
+        borderRadius: 8
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <span style={{ fontSize: 20 }}>🐘</span>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#0c4a6e' }}>PostgreSQL Database Configuration</h3>
+        </div>
+        <div style={{ fontSize: 14, color: '#0c4a6e', lineHeight: 1.5 }}>
+          <p style={{ margin: '0 0 8px 0' }}>
+            <strong>Database:</strong> Configure your PostgreSQL connection settings. The application will use these settings to store and retrieve data.
+          </p>
+          <p style={{ margin: '0 0 8px 0' }}>
+            <strong>Migration:</strong> You can migrate your existing localStorage data to PostgreSQL for better performance and reliability.
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>⚠️ Important:</strong> Make sure PostgreSQL is running and accessible before testing the connection.
+          </p>
+        </div>
+      </div>
+
+      {/* Connection Status */}
+      <div style={baseStyles.card}>
+        <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>Connection Status</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+          <div style={{
+            width: 12,
+            height: 12,
+            borderRadius: '50%',
+            backgroundColor: connectionStatus === 'connected' ? '#10b981' : 
+                           connectionStatus === 'error' ? '#ef4444' : 
+                           connectionStatus === 'testing' ? '#f59e0b' : '#6b7280'
+          }} />
+          <span style={{ 
+            fontSize: 14, 
+            fontWeight: 500,
+            color: connectionStatus === 'connected' ? '#10b981' : 
+                   connectionStatus === 'error' ? '#ef4444' : 
+                   connectionStatus === 'testing' ? '#f59e0b' : '#6b7280'
+          }}>
+            {connectionStatus === 'connected' ? 'Connected' : 
+             connectionStatus === 'error' ? 'Connection Failed' : 
+             connectionStatus === 'testing' ? 'Testing Connection...' : 'Disconnected'}
+          </span>
+        </div>
+        <button
+          onClick={testDatabaseConnection}
+          disabled={isTestingConnection}
+          style={{
+            ...baseStyles.btnPrimary,
+            opacity: isTestingConnection ? 0.6 : 1,
+            cursor: isTestingConnection ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {isTestingConnection ? 'Testing...' : 'Test Connection'}
+        </button>
+      </div>
+
+      {/* Database Configuration */}
+      <div style={baseStyles.card}>
+        <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>Database Configuration</h3>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+          <div>
+            <label style={baseStyles.label}>Host</label>
+            <input
+              type="text"
+              value={databaseSettings.host}
+              onChange={(e) => handleDatabaseChange('host', e.target.value)}
+              style={baseStyles.input}
+              placeholder="localhost"
+            />
+          </div>
+          <div>
+            <label style={baseStyles.label}>Port</label>
+            <input
+              type="number"
+              value={databaseSettings.port}
+              onChange={(e) => handleDatabaseChange('port', parseInt(e.target.value) || 5432)}
+              style={baseStyles.input}
+              placeholder="5432"
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+          <div>
+            <label style={baseStyles.label}>Database Name</label>
+            <input
+              type="text"
+              value={databaseSettings.database}
+              onChange={(e) => handleDatabaseChange('database', e.target.value)}
+              style={baseStyles.input}
+              placeholder="wc_helper"
+            />
+          </div>
+          <div>
+            <label style={baseStyles.label}>Username</label>
+            <input
+              type="text"
+              value={databaseSettings.username}
+              onChange={(e) => handleDatabaseChange('username', e.target.value)}
+              style={baseStyles.input}
+              placeholder="postgres"
+            />
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={baseStyles.label}>Password</label>
+          <input
+            type="password"
+            value={databaseSettings.password}
+            onChange={(e) => handleDatabaseChange('password', e.target.value)}
+            style={baseStyles.input}
+            placeholder="Enter database password"
+          />
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ ...baseStyles.label, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="checkbox"
+              checked={databaseSettings.ssl}
+              onChange={(e) => handleDatabaseChange('ssl', e.target.checked)}
+              style={{ transform: 'scale(1.1)' }}
+            />
+            Enable SSL (for production)
+          </label>
+        </div>
+
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button
+            onClick={handleDatabaseSave}
+            style={baseStyles.btnPrimary}
+          >
+            Save Database Settings
+          </button>
+          <button
+            onClick={() => setDatabaseSettings({
+              host: 'localhost',
+              port: 5432,
+              database: 'wc_helper',
+              username: 'postgres',
+              password: '',
+              ssl: false
+            })}
+            style={baseStyles.btnGhost}
+          >
+            Reset to Defaults
+          </button>
+        </div>
+      </div>
+
+      {/* Migration Section */}
+      <div style={baseStyles.card}>
+        <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>Data Migration</h3>
+        <div style={{ fontSize: 14, color: '#64748b', marginBottom: 16 }}>
+          Migrate your existing localStorage data to PostgreSQL for better performance and reliability.
+        </div>
+        
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <div style={{
+              width: 12,
+              height: 12,
+              borderRadius: '50%',
+              backgroundColor: migrationStatus === 'completed' ? '#10b981' : 
+                             migrationStatus === 'error' ? '#ef4444' : 
+                             migrationStatus === 'migrating' ? '#f59e0b' : '#6b7280'
+            }} />
+            <span style={{ 
+              fontSize: 14, 
+              fontWeight: 500,
+              color: migrationStatus === 'completed' ? '#10b981' : 
+                     migrationStatus === 'error' ? '#ef4444' : 
+                     migrationStatus === 'migrating' ? '#f59e0b' : '#6b7280'
+            }}>
+              {migrationStatus === 'completed' ? 'Migration Completed' : 
+               migrationStatus === 'error' ? 'Migration Failed' : 
+               migrationStatus === 'migrating' ? 'Migrating Data...' : 'Ready to Migrate'}
+            </span>
+          </div>
+        </div>
+
+        <button
+          onClick={migrateToPostgreSQL}
+          disabled={migrationStatus === 'migrating' || connectionStatus !== 'connected'}
+          style={{
+            ...baseStyles.btnPrimary,
+            opacity: (migrationStatus === 'migrating' || connectionStatus !== 'connected') ? 0.6 : 1,
+            cursor: (migrationStatus === 'migrating' || connectionStatus !== 'connected') ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {migrationStatus === 'migrating' ? 'Migrating...' : 'Migrate to PostgreSQL'}
+        </button>
+
+        {connectionStatus !== 'connected' && (
+          <div style={{ 
+            marginTop: 8, 
+            fontSize: 12, 
+            color: '#ef4444',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4
+          }}>
+            ⚠️ Please test and establish database connection first
+          </div>
+        )}
+      </div>
+
+      {/* Database Statistics */}
+      <div style={baseStyles.card}>
+        <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>Database Statistics</h3>
+        <div style={{ fontSize: 14, color: '#64748b', marginBottom: 16 }}>
+          View database statistics and health information.
+        </div>
+        
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button
+            onClick={() => {
+              // This would fetch database stats
+              console.log('Fetching database statistics...');
+            }}
+            style={baseStyles.btnGhost}
+          >
+            View Statistics
+          </button>
+          <button
+            onClick={() => {
+              // This would clear database cache
+              console.log('Clearing database cache...');
+            }}
+            style={baseStyles.btnGhost}
+          >
+            Clear Cache
+          </button>
+        </div>
+      </div>
+
+      {/* Daily Cleanup Management */}
+      <div style={baseStyles.card}>
+        <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>Daily Cleanup</h3>
+        <div style={{ fontSize: 14, color: '#64748b', marginBottom: 16 }}>
+          Manage daily cleanup of local data. Messages, logs, and conversation memory are cleaned up automatically to prevent storage bloat.
+        </div>
+        
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button
+            onClick={async () => {
+              try {
+                const response = await fetch('/api/cleanup/trigger', { method: 'POST' });
+                const result = await response.json();
+                if (result.success) {
+                  console.log('✅ Cleanup completed:', result.data);
+                } else {
+                  console.error('❌ Cleanup failed:', result.error);
+                }
+              } catch (error) {
+                console.error('❌ Error triggering cleanup:', error);
+              }
+            }}
+            style={baseStyles.btnPrimary}
+          >
+            Trigger Cleanup Now
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                const response = await fetch('/api/cleanup/status');
+                const result = await response.json();
+                if (result.success) {
+                  console.log('📊 Cleanup status:', result.data);
+                } else {
+                  console.error('❌ Error getting cleanup status:', result.error);
+                }
+              } catch (error) {
+                console.error('❌ Error fetching cleanup status:', error);
+              }
+            }}
+            style={baseStyles.btnGhost}
+          >
+            View Cleanup Status
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderTabContent = () => {
     try {
-      switch (activeTab) {
+    switch (activeTab) {
         case 'business': return renderBusinessSettings();
-        case 'ai': return renderAISettings();
-        case 'ai_rules': return renderAIRulesSettings();
+      case 'ai': return renderAISettings();
+      case 'ai_rules': return renderAIRulesSettings();
+        case 'database': return renderDatabaseSettings();
         case 'memory': return renderMemorySettings();
-        case 'whatsapp': return renderWhatsAppSettings();
+      case 'whatsapp': return renderWhatsAppSettings();
         default: return renderBusinessSettings();
       }
     } catch (error) {

@@ -7,14 +7,20 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "public": "node public-server.js",
+    "public:dev": "nodemon public-server.js",
+    "webhook": "node webhook-server-postgres.js",
+    "webhook:dev": "nodemon webhook-server-postgres.js"
   },
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "express": "^4.21.2",
     "vite": "^5.4.10",
-    "@vitejs/plugin-react": "^4.3.3"
+    "@vitejs/plugin-react": "^4.3.3",
+    "pg": "^8.11.3",
+    "pg-pool": "^3.6.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
@@ -24,6 +30,7 @@
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.14",
-    "globals": "^15.11.0"
+    "globals": "^15.11.0",
+    "nodemon": "^3.0.2"
   }
 }

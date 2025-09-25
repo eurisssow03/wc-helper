@@ -3,6 +3,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { processMessageWithAI } from './webhook-ai-processor.js';
+import { postgresService } from './src/services/postgresService.js';
+import postgresApi from './webhook-postgres-api.js';
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
