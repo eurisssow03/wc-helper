@@ -48,7 +48,7 @@ export default function App() {
  * Top-level Application
  *************************/
 function AppShell() {
-  const { session, login, logout } = useAuth();
+  const { session, login, logout, dbStatus } = useAuth();
   const [active, setActive] = useState("Dashboard");
   const { show, node: toast } = useToast();
 
@@ -66,7 +66,7 @@ function AppShell() {
   
   if (!session) {
     console.log('🔍 AppShell: No session, showing login page');
-    return <LoginPage onLogin={login} />;
+    return <LoginPage onLogin={login} dbStatus={dbStatus} />;
   }
   
   console.log('🔍 AppShell: Session exists, showing dashboard');
@@ -111,10 +111,21 @@ function AppShell() {
         </div>
       </aside>
       <main className="content">
-        <div style={baseStyles.header}>
-          <div style={{ fontWeight: 700 }}>{active}</div>
-          <div style={baseStyles.badge}>Timezone: {TZ}</div>
-        </div>
+                <div style={baseStyles.header}>
+                  <div style={{ fontWeight: 700 }}>{active}</div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <div style={{
+                      ...baseStyles.badge,
+                      backgroundColor: dbStatus === 'connected' ? '#10b981' : 
+                                     dbStatus === 'disconnected' ? '#f59e0b' : '#6b7280',
+                      color: 'white'
+                    }}>
+                      DB: {dbStatus === 'connected' ? 'Connected' : 
+                           dbStatus === 'disconnected' ? 'Offline' : 'Checking...'}
+                    </div>
+                    <div style={baseStyles.badge}>Timezone: {TZ}</div>
+                  </div>
+                </div>
         <div style={baseStyles.page}>
           {active === "Dashboard" && <Dashboard />}
           {active === "Messages" && <MessagesPage />}

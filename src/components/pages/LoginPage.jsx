@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { baseStyles } from '../../utils/styles.js';
 
-export function LoginPage({ onLogin }) {
+export function LoginPage({ onLogin, dbStatus }) {
   const [email, setEmail] = useState("admin@demo.com");
   const [pwd, setPwd] = useState("Passw0rd!");
   const [err, setErr] = useState("");
@@ -20,6 +20,38 @@ export function LoginPage({ onLogin }) {
     <div className="login-container">
       <div className="login-card">
         <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 12 }}>Login</div>
+        
+        {/* Database Status Indicator */}
+        <div style={{ 
+          marginBottom: 12, 
+          padding: 8, 
+          borderRadius: 4, 
+          backgroundColor: dbStatus === 'connected' ? '#f0f9ff' : 
+                         dbStatus === 'disconnected' ? '#fef3c7' : '#f3f4f6',
+          border: `1px solid ${dbStatus === 'connected' ? '#0ea5e9' : 
+                             dbStatus === 'disconnected' ? '#f59e0b' : '#6b7280'}`,
+          fontSize: 12
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <div style={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              backgroundColor: dbStatus === 'connected' ? '#10b981' : 
+                             dbStatus === 'disconnected' ? '#f59e0b' : '#6b7280'
+            }} />
+            <span style={{ fontWeight: 600 }}>
+              Database: {dbStatus === 'connected' ? 'Connected' : 
+                        dbStatus === 'disconnected' ? 'Offline (Using Local Storage)' : 'Checking...'}
+            </span>
+          </div>
+          {dbStatus === 'disconnected' && (
+            <div style={{ color: '#92400e', fontSize: 11 }}>
+              ⚠️ Database unavailable. Authentication will use local storage fallback.
+            </div>
+          )}
+        </div>
+        
         <div style={{ fontSize: 12, marginBottom: 12, color: "#64748b" }}>
           Debug: If you see this, the login page is working correctly.
         </div>
