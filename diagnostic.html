@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WC Helper - Diagnostic</title>
+    <style>
+        body {
+            font-family: system-ui, Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background: #d1fae5; color: #065f46; }
+        .error { background: #fee2e2; color: #991b1b; }
+        .warning { background: #fef3c7; color: #92400e; }
+        .info { background: #dbeafe; color: #1e40af; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #2563eb; }
+        .code {
+            background: #f3f4f6;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 WC Helper Diagnostic Tool</h1>
+    
+    <div class="card">
+        <h2>📊 Current Status</h2>
+        <div id="status-info">
+            <div class="status info">Loading diagnostic information...</div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2>🔧 Quick Fixes</h2>
+        <button onclick="clearAllData()">Clear All Data & Reload</button>
+        <button onclick="testLogin()">Test Login Function</button>
+        <button onclick="checkApp()">Check Main App</button>
+        <button onclick="showLocalStorage()">Show localStorage Contents</button>
+    </div>
+    
+    <div class="card">
+        <h2>📱 Test Your Deployed App</h2>
+        <p>Click the button below to test your deployed application:</p>
+        <button onclick="window.open('https://wc-helper.onrender.com', '_blank')">
+            Open WC Helper App
+        </button>
+        <p style="margin-top: 10px; font-size: 14px; color: #6b7280;">
+            If the app opens but doesn't show a login page, use the "Clear All Data & Reload" button above.
+        </p>
+    </div>
+    
+    <div class="card">
+        <h2>🐛 Debug Information</h2>
+        <div id="debug-output" class="code">
+            Loading debug information...
+        </div>
+    </div>
+
+    <script>
+        // Diagnostic functions
+        function updateStatus() {
+            const statusDiv = document.getElementById('status-info');
+            const debugDiv = document.getElementById('debug-output');
+            
+            // Check localStorage
+            const hasSession = localStorage.getItem('wc_session');
+            const hasUsers = localStorage.getItem('wc_users');
+            const allKeys = Object.keys(localStorage);
+            
+            let status = '';
+            let debug = '';
+            
+            if (hasSession) {
+                status += '<div class="status warning">⚠️ Session found - this might prevent login page from showing</div>';
+                debug += `Session: ${hasSession}\n`;
+            } else {
+                status += '<div class="status success">✅ No session found - login page should show</div>';
+                debug += `Session: null\n`;
+            }
+            
+            if (hasUsers) {
+                status += '<div class="status success">✅ Users data found</div>';
+                debug += `Users: ${hasUsers.substring(0, 100)}...\n`;
+            } else {
+                status += '<div class="status error">❌ No users data found</div>';
+                debug += `Users: null\n`;
+            }
+            
+            status += `<div class="status info">📊 Total localStorage keys: ${allKeys.length}</div>`;
+            debug += `All keys: ${allKeys.join(', ')}\n`;
+            debug += `User Agent: ${navigator.userAgent}\n`;
+            debug += `Current URL: ${window.location.href}\n`;
+            debug += `Timestamp: ${new Date().toISOString()}\n`;
+            
+            statusDiv.innerHTML = status;
+            debugDiv.textContent = debug;
+        }
+        
+        function clearAllData() {
+            if (confirm('This will clear all data and reload the page. Continue?')) {
+                localStorage.clear();
+                alert('All data cleared! Reloading...');
+                window.location.reload();
+            }
+        }
+        
+        function testLogin() {
+            // Create test user
+            const testUser = {
+                id: 'test-001',
+                username: 'admin@demo.com',
+                password: 'test-hash', // In real app, this would be SHA-256
+                role: 'admin',
+                is_active: true
+            };
+            
+            localStorage.setItem('wc_users', JSON.stringify([testUser]));
+            alert('Test user created! Check the main app now.');
+            updateStatus();
+        }
+        
+        function checkApp() {
+            // Try to fetch the main app
+            fetch('https://wc-helper.onrender.com')
+                .then(response => {
+                    if (response.ok) {
+                        alert('✅ App is accessible! Status: ' + response.status);
+                    } else {
+                        alert('❌ App returned status: ' + response.status);
+                    }
+                })
+                .catch(error => {
+                    alert('❌ Error accessing app: ' + error.message);
+                });
+        }
+        
+        function showLocalStorage() {
+            const data = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                data[key] = localStorage.getItem(key);
+            }
+            alert('localStorage contents:\n' + JSON.stringify(data, null, 2));
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateStatus();
+            console.log('🔍 Diagnostic tool loaded');
+        });
+    </script>
+</body>
+</html>

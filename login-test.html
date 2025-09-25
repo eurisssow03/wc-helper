@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WC Helper - Login Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: system-ui, Arial, sans-serif;
+            background: #f8fafc;
+            min-height: 100vh;
+        }
+        
+        .login-container {
+            display: grid;
+            place-items: center;
+            height: 100vh;
+            background: #f8fafc;
+        }
+        
+        .login-card {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            width: 380px;
+            max-width: 90vw;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
+            color: #374151;
+        }
+        
+        input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        
+        button:hover {
+            background: #2563eb;
+        }
+        
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        
+        .error {
+            color: #dc2626;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .debug {
+            margin-top: 16px;
+            padding: 12px;
+            background: #f3f4f6;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+        
+        .success {
+            color: #059669;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .btn-secondary {
+            background: #6b7280;
+            margin-top: 8px;
+        }
+        
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <h2 style="font-size: 20px; font-weight: 800; margin-bottom: 12px; color: #111827;">Login</h2>
+            <div class="success">
+                ✅ Login page is working correctly! This is the UI you should see.
+            </div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        value="admin@demo.com"
+                        placeholder="e.g.: admin@demo.com"
+                        required
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        value="Passw0rd!"
+                        placeholder="At least 8 characters, with uppercase, lowercase and numbers"
+                        required
+                    >
+                </div>
+                
+                <div id="error" class="error" style="display: none;"></div>
+                
+                <button type="submit" id="loginBtn">
+                    Login
+                </button>
+                
+                <div style="font-size: 12px; margin-top: 12px; color: #6b7280;">
+                    Default account: admin@demo.com / Passw0rd!
+                </div>
+                
+                <button 
+                    type="button" 
+                    class="btn-secondary"
+                    onclick="clearSession()"
+                >
+                    Clear Session & Reload
+                </button>
+            </form>
+            
+            <div class="debug">
+                <h4>Debug Information:</h4>
+                <div id="debug-info">
+                    <p><strong>Current localStorage keys:</strong> <span id="localStorage-keys"></span></p>
+                    <p><strong>wc_session:</strong> <span id="session-value"></span></p>
+                    <p><strong>wc_users:</strong> <span id="users-value"></span></p>
+                    <p><strong>Status:</strong> <span id="status"></span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize debug info
+        function updateDebugInfo() {
+            const keys = Object.keys(localStorage);
+            document.getElementById('localStorage-keys').textContent = keys.length > 0 ? keys.join(', ') : 'None';
+            document.getElementById('session-value').textContent = localStorage.getItem('wc_session') || 'null';
+            document.getElementById('users-value').textContent = localStorage.getItem('wc_users') || 'null';
+            
+            const hasSession = localStorage.getItem('wc_session');
+            document.getElementById('status').textContent = hasSession ? 'Logged in' : 'Not logged in';
+        }
+        
+        // Clear session function
+        function clearSession() {
+            localStorage.removeItem('wc_session');
+            updateDebugInfo();
+            alert('Session cleared! Page will reload.');
+            window.location.reload();
+        }
+        
+        // Simple SHA-256 implementation (for demo purposes)
+        async function sha256(message) {
+            const msgBuffer = new TextEncoder().encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        
+        // Login function
+        async function handleLogin(email, password) {
+            try {
+                // Check if users exist in localStorage
+                let users = JSON.parse(localStorage.getItem('wc_users') || '[]');
+                
+                if (users.length === 0) {
+                    // Create default user
+                    const hashedPassword = await sha256('Passw0rd!');
+                    users = [{
+                        id: 'admin-001',
+                        username: 'admin@demo.com',
+                        password: hashedPassword,
+                        role: 'admin',
+                        is_active: true,
+                        created_by: 'system',
+                        created_at: new Date().toISOString(),
+                        updated_by: 'system',
+                        updated_at: new Date().toISOString()
+                    }];
+                    localStorage.setItem('wc_users', JSON.stringify(users));
+                }
+                
+                // Hash the provided password
+                const hash = await sha256(password);
+                
+                // Find user
+                const found = users.find(u => 
+                    u.username.toLowerCase() === email.toLowerCase() && 
+                    u.password === hash && 
+                    u.is_active
+                );
+                
+                if (found) {
+                    // Create session
+                    const session = {
+                        email: found.username,
+                        role: found.role,
+                        signedInAt: new Date().toISOString()
+                    };
+                    
+                    localStorage.setItem('wc_session', JSON.stringify(session));
+                    updateDebugInfo();
+                    
+                    alert('Login successful! You would now see the dashboard.');
+                    return true;
+                } else {
+                    throw new Error('Email or password is incorrect');
+                }
+            } catch (error) {
+                throw error;
+            }
+        }
+        
+        // Form submission
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error');
+            const loginBtn = document.getElementById('loginBtn');
+            
+            // Clear previous errors
+            errorDiv.style.display = 'none';
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
+            
+            try {
+                await handleLogin(email, password);
+                errorDiv.style.display = 'none';
+                alert('Login successful! In the real app, you would now see the dashboard.');
+            } catch (error) {
+                errorDiv.textContent = error.message;
+                errorDiv.style.display = 'block';
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login';
+                updateDebugInfo();
+            }
+        });
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDebugInfo();
+            console.log('🔍 Login test page loaded');
+            console.log('📊 Current localStorage:', Object.keys(localStorage));
+        });
+    </script>
+</body>
+</html>
