@@ -347,7 +347,36 @@ async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = [
 
   console.log('🤖 Webhook AI: Best match:', { question: matchedQuestion, confidence });
 
-  // Prepare context for chat model - use top 1 ranking FAQ as primary context
+  // ===== KNOWLEDGE BASE LOGGING =====
+  console.log('🧠 ===== WEBHOOK AI KNOWLEDGE BASE FOR THIS QUERY =====');
+  console.log('  📚 FAQ Knowledge Base:');
+  console.log('    • Total FAQs:', faqs.length);
+  console.log('    • Active FAQs:', activeFAQs.length);
+  console.log('    • Top FAQ Match:', bestMatch ? bestMatch.faq.question : 'None');
+  if (bestMatch) {
+    console.log('    • FAQ Answer Preview:', bestMatch.faq.answer?.substring(0, 100) + '...');
+  }
+  
+  console.log('  🏨 Homestay Data:');
+  console.log('    • Total Homestays:', homestays.length);
+  console.log('    • Homestay Names:', homestays.map(h => h.name).join(', '));
+  if (homestays.length > 0) {
+    console.log('    • Sample Homestay:', JSON.stringify(homestays[0], null, 2));
+  }
+  
+  console.log('  🧠 General Knowledge Base:');
+  console.log('    • Length:', homestayGeneralKnowledge.length, 'characters');
+  console.log('    • Preview:', homestayGeneralKnowledge.substring(0, 200) + '...');
+  
+  console.log('  💾 Conversation Memory:');
+  console.log('    • Phone Number:', fromNumber);
+  console.log('    • Message Count:', conversationMemory.messages.length);
+  console.log('    • Has History:', conversationMemory.messages.length > 0);
+  console.log('    • Recent Messages:', conversationMemory.messages.slice(-3).map(msg => 
+    `${msg.isFromCustomer ? 'Customer' : 'Assistant'}: ${msg.message}`
+  ).join('\n'));
+  
+  console.log('  📋 Context Items for AI:');
   const topContext = bestMatch ? [{
     question: bestMatch.faq.question,
     answer: bestMatch.faq.answer,
@@ -355,7 +384,6 @@ async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = [
     isTopMatch: true
   }] : [];
   
-  // Add additional context from top 3 candidates
   const additionalContext = reranked.slice(1, 3).map(r => ({
     question: r.faq.question,
     answer: r.faq.answer,
@@ -364,6 +392,22 @@ async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = [
   }));
   
   const contextItems = [...topContext, ...additionalContext];
+  contextItems.forEach((item, index) => {
+    console.log(`    ${index + 1}. ${item.question}`);
+    console.log(`       Answer: ${item.answer?.substring(0, 100)}...`);
+    console.log(`       Confidence: ${item.confidence?.toFixed(3)}`);
+    console.log(`       Is Top Match: ${item.isTopMatch}`);
+  });
+  
+  console.log('  🎯 Final Knowledge Base Summary:');
+  console.log('    • FAQ Context Items:', contextItems.length);
+  console.log('    • Homestay Properties:', homestays.length);
+  console.log('    • General Knowledge Length:', homestayGeneralKnowledge.length);
+  console.log('    • Conversation History Length:', conversationMemory.messages.length);
+  console.log('    • Recent Messages Count:', conversationMemory.messages.length);
+  console.log('🧠 ===== END WEBHOOK KNOWLEDGE BASE =====');
+
+  // Context items are already prepared above in the knowledge base logging section
   console.log('  📝 Context Items:', contextItems.length);
   console.log('  🏆 Top Context:', topContext.length > 0 ? `"${topContext[0].question}"` : 'None');
   console.log('  📚 Additional Context:', additionalContext.length);

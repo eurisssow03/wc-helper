@@ -474,6 +474,50 @@ class AIService {
         `${msg.isFromCustomer ? 'Customer' : 'Assistant'}: ${msg.message}`
       ).join('\n');
       
+      // ===== KNOWLEDGE BASE LOGGING =====
+      console.log('🧠 ===== AI KNOWLEDGE BASE FOR THIS QUERY =====');
+      console.log('  📚 FAQ Knowledge Base:');
+      console.log('    • Total FAQs:', this.faqs.length);
+      console.log('    • Active FAQs:', activeFAQs.length);
+      console.log('    • Top FAQ Context:', contextItems.length > 0 ? contextItems[0]?.question : 'None');
+      if (contextItems.length > 0) {
+        console.log('    • FAQ Answer Preview:', contextItems[0]?.answer?.substring(0, 100) + '...');
+      }
+      
+      console.log('  🏨 Homestay Data:');
+      console.log('    • Total Homestays:', this.homestays.length);
+      console.log('    • Homestay Names:', this.homestays.map(h => h.name).join(', '));
+      if (this.homestays.length > 0) {
+        console.log('    • Sample Homestay:', JSON.stringify(this.homestays[0], null, 2));
+      }
+      
+      console.log('  🧠 General Knowledge Base:');
+      console.log('    • Length:', this.homestayGeneralKnowledge.length, 'characters');
+      console.log('    • Preview:', this.homestayGeneralKnowledge.substring(0, 200) + '...');
+      
+      console.log('  💾 Conversation Memory:');
+      console.log('    • Phone Number:', phoneNumber);
+      console.log('    • Message Count:', conversationContext.recentMessages.length);
+      console.log('    • Has History:', conversationContext.recentMessages.length > 0);
+      console.log('    • Conversation Summary:', conversationSummary);
+      console.log('    • Recent Messages:', recentMessages);
+      
+      console.log('  📋 Context Items for AI:');
+      contextItems.forEach((item, index) => {
+        console.log(`    ${index + 1}. ${item.question}`);
+        console.log(`       Answer: ${item.answer?.substring(0, 100)}...`);
+        console.log(`       Confidence: ${item.confidence?.toFixed(3)}`);
+        console.log(`       Tags: ${item.tags?.join(', ') || 'None'}`);
+      });
+      
+      console.log('  🎯 Final Knowledge Base Summary:');
+      console.log('    • FAQ Context Items:', contextItems.length);
+      console.log('    • Homestay Properties:', this.homestays.length);
+      console.log('    • General Knowledge Length:', this.homestayGeneralKnowledge.length);
+      console.log('    • Conversation History Length:', conversationSummary.length);
+      console.log('    • Recent Messages Count:', conversationContext.recentMessages.length);
+      console.log('🧠 ===== END KNOWLEDGE BASE =====');
+      
       const systemPrompt = `You are a professional homestay customer service assistant. 
 
 KNOWLEDGE BASE:
