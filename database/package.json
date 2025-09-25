@@ -1,0 +1,24 @@
+{
+  "name": "wc-helper-database",
+  "version": "1.0.0",
+  "description": "Database service for WC Helper application",
+  "main": "databaseService.js",
+  "scripts": {
+    "start": "node databaseService.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "sqlite3": "^5.1.6",
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "keywords": [
+    "sqlite",
+    "database",
+    "wc-helper",
+    "whatsapp",
+    "ai"
+  ],
+  "author": "WC Helper Team",
+  "license": "MIT"
+}
