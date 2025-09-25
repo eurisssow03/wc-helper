@@ -97,6 +97,30 @@ class ConversationMemoryService {
           timestamp: nowISO()
         });
       }
+
+      // Extract property context - detect specific homestay mentions
+      const propertyKeywords = [
+        { name: 'Trefoil Shah Alam', keywords: ['trefoil', 'shah alam', 'trefoil shah alam'] },
+        { name: 'Palas Horizon Cameron', keywords: ['palas', 'horizon', 'cameron', 'palas horizon', 'cameron highlands'] },
+        { name: 'Condo Manhattan Ipoh', keywords: ['manhattan', 'ipoh', 'condo manhattan', 'manhattan ipoh'] }
+      ];
+
+      for (const property of propertyKeywords) {
+        const isPropertyMentioned = property.keywords.some(keyword => 
+          lowerMessage.includes(keyword)
+        );
+        
+        if (isPropertyMentioned) {
+          conversation.context.currentProperty = {
+            name: property.name,
+            mentionedIn: message,
+            timestamp: nowISO(),
+            confidence: 'high' // High confidence when property name is explicitly mentioned
+          };
+          console.log(`🏨 Property context updated: ${property.name} mentioned in conversation`);
+          break; // Only set one property at a time
+        }
+      }
     }
   }
 
@@ -110,7 +134,8 @@ class ConversationMemoryService {
       context: conversation.context,
       summary: conversation.summary,
       totalMessages: conversation.messages.length,
-      lastUpdated: conversation.lastUpdated
+      lastUpdated: conversation.lastUpdated,
+      currentProperty: conversation.context.currentProperty || null
     };
   }
 
@@ -202,6 +227,23 @@ class ConversationMemoryService {
         return daysSinceUpdate <= 7; // Active within last 7 days
       }).length
     };
+  }
+
+  // Get current property context for a conversation
+  getCurrentProperty(phoneNumber) {
+    const normalizedPhone = this.normalizePhoneNumber(phoneNumber);
+    const conversation = this.memory[normalizedPhone];
+    return conversation?.context?.currentProperty || null;
+  }
+
+  // Clear property context
+  clearPropertyContext(phoneNumber) {
+    const normalizedPhone = this.normalizePhoneNumber(phoneNumber);
+    if (this.memory[normalizedPhone]?.context) {
+      delete this.memory[normalizedPhone].context.currentProperty;
+      this.saveMemory();
+      console.log(`🏨 Property context cleared for ${normalizedPhone}`);
+    }
   }
 }
 

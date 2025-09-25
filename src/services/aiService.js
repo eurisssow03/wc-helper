@@ -502,6 +502,17 @@ class AIService {
       console.log('    • Conversation Summary:', conversationSummary);
       console.log('    • Recent Messages:', recentMessages);
       
+      console.log('  🏨 Property Context:');
+      const currentProperty = conversationContext.currentProperty;
+      if (currentProperty) {
+        console.log('    • Current Property:', currentProperty.name);
+        console.log('    • Mentioned In:', currentProperty.mentionedIn);
+        console.log('    • Confidence:', currentProperty.confidence);
+        console.log('    • Timestamp:', currentProperty.timestamp);
+      } else {
+        console.log('    • No specific property context');
+      }
+      
       console.log('  📋 Context Items for AI:');
       contextItems.forEach((item, index) => {
         console.log(`    ${index + 1}. ${item.question}`);
@@ -537,6 +548,8 @@ RESPONSE GUIDELINES:
 8. Provide specific details about properties, amenities, and services when relevant
 9. Always maintain a welcoming and informative tone
 10. Reference previous conversation when relevant to show continuity
+11. **IMPORTANT: If the customer has mentioned a specific property, focus ALL responses on that property**
+12. **When property context exists, provide property-specific information and avoid generic responses**
 
 Remember: FAQ information takes TOP PRIORITY, but homestay data, general knowledge, and conversation memory should be used to make responses more comprehensive and personalized.
 
@@ -547,7 +560,12 @@ CONVERSATION HISTORY:
 ${conversationSummary}
 
 RECENT MESSAGES:
-${recentMessages || 'No recent messages.'}`;
+${recentMessages || 'No recent messages.'}
+
+PROPERTY CONTEXT:
+${currentProperty ? `The customer is asking about: ${currentProperty.name}
+Property mentioned in: "${currentProperty.mentionedIn}"
+Focus ALL responses on this specific property and provide property-specific information.` : 'No specific property context - provide general information.'}`;
 
       answer = await callChatModel({
         settings: this.settings,

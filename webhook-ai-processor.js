@@ -216,6 +216,33 @@ function addWebhookMessage(phoneNumber, message, isFromCustomer = true) {
   webhookMemory[normalizedPhone].messages.push(messageEntry);
   webhookMemory[normalizedPhone].lastUpdated = new Date().toISOString();
 
+  // Extract property context from customer messages
+  if (isFromCustomer) {
+    const lowerMessage = message.toLowerCase();
+    const propertyKeywords = [
+      { name: 'Trefoil Shah Alam', keywords: ['trefoil', 'shah alam', 'trefoil shah alam'] },
+      { name: 'Palas Horizon Cameron', keywords: ['palas', 'horizon', 'cameron', 'palas horizon', 'cameron highlands'] },
+      { name: 'Condo Manhattan Ipoh', keywords: ['manhattan', 'ipoh', 'condo manhattan', 'manhattan ipoh'] }
+    ];
+
+    for (const property of propertyKeywords) {
+      const isPropertyMentioned = property.keywords.some(keyword => 
+        lowerMessage.includes(keyword)
+      );
+      
+      if (isPropertyMentioned) {
+        webhookMemory[normalizedPhone].context.currentProperty = {
+          name: property.name,
+          mentionedIn: message,
+          timestamp: new Date().toISOString(),
+          confidence: 'high'
+        };
+        console.log(`🏨 Webhook: Property context updated: ${property.name} mentioned in conversation`);
+        break;
+      }
+    }
+  }
+
   // Keep only last 10 messages for webhook
   if (webhookMemory[normalizedPhone].messages.length > 10) {
     webhookMemory[normalizedPhone].messages = webhookMemory[normalizedPhone].messages.slice(-10);
@@ -375,6 +402,17 @@ async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = [
   console.log('    • Recent Messages:', conversationMemory.messages.slice(-3).map(msg => 
     `${msg.isFromCustomer ? 'Customer' : 'Assistant'}: ${msg.message}`
   ).join('\n'));
+  
+  console.log('  🏨 Property Context:');
+  const currentProperty = conversationMemory.context?.currentProperty;
+  if (currentProperty) {
+    console.log('    • Current Property:', currentProperty.name);
+    console.log('    • Mentioned In:', currentProperty.mentionedIn);
+    console.log('    • Confidence:', currentProperty.confidence);
+    console.log('    • Timestamp:', currentProperty.timestamp);
+  } else {
+    console.log('    • No specific property context');
+  }
   
   console.log('  📋 Context Items for AI:');
   const topContext = bestMatch ? [{

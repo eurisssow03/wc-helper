@@ -9,11 +9,18 @@ import { conversationMemoryService } from '../../services/conversationMemoryServ
 function MemoryStatus({ refresh }) {
   const memoryContext = conversationMemoryService.getConversationContext('chat-tester');
   
-  return memoryContext.recentMessages.length > 0 ? (
+  if (memoryContext.recentMessages.length === 0) return null;
+  
+  return (
     <span style={{ color: '#10b981', marginLeft: 8 }}>
       💾 Memory: {memoryContext.recentMessages.length} messages
+      {memoryContext.currentProperty && (
+        <span style={{ color: '#f59e0b', marginLeft: 4 }}>
+          🏨 {memoryContext.currentProperty.name}
+        </span>
+      )}
     </span>
-  ) : null;
+  );
 }
 
 export function ChatTester({ onLogged }) {
