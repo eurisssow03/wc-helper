@@ -121,6 +121,9 @@ class MessageSyncService {
             const updatedLogs = [...uniqueNewLogs, ...existingLogs];
             writeLS(STORAGE_KEYS.logs, updatedLogs);
             console.log('📝 Created', uniqueNewLogs.length, 'log entries from webhook messages');
+            console.log('📝 Sample log entry:', uniqueNewLogs[0]);
+          } else {
+            console.log('📝 No new log entries created (all webhook messages already exist)');
           }
           
           console.log('📨 Synced', newMessages.length, 'new messages from webhook');

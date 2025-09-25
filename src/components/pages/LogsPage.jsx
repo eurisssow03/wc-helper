@@ -644,21 +644,27 @@ export function LogsPage() {
                       <div>
                         <label style={{ ...baseStyles.label, marginBottom: 4 }}>Confidence Threshold</label>
                         <div style={{ padding: 8, backgroundColor: '#f3e5f5', borderRadius: 6 }}>
-                          {(selectedLog.ai_processing.confidence_threshold * 100).toFixed(1)}%
+                          {selectedLog.ai_processing?.confidence_threshold ? 
+                            (selectedLog.ai_processing.confidence_threshold * 100).toFixed(1) + '%' : 
+                            'Not available'
+                          }
                         </div>
                       </div>
 
                       <div>
                         <label style={{ ...baseStyles.label, marginBottom: 4 }}>Similarity Threshold</label>
                         <div style={{ padding: 8, backgroundColor: '#fff3e0', borderRadius: 6 }}>
-                          {(selectedLog.ai_processing.similarity_threshold * 100).toFixed(1)}%
+                          {selectedLog.ai_processing?.similarity_threshold ? 
+                            (selectedLog.ai_processing.similarity_threshold * 100).toFixed(1) + '%' : 
+                            'Not available'
+                          }
                         </div>
                       </div>
 
                       <div>
                         <label style={{ ...baseStyles.label, marginBottom: 4 }}>Search Method</label>
                         <div style={{ padding: 8, backgroundColor: '#e8f5e8', borderRadius: 6 }}>
-                          {selectedLog.ai_processing.search_method || 'Unknown'}
+                          {selectedLog.ai_processing?.searchMethod || selectedLog.ai_processing?.search_method || 'Unknown'}
                         </div>
                       </div>
 
@@ -667,7 +673,9 @@ export function LogsPage() {
                         <div style={{ padding: 8, backgroundColor: selectedLog.conversation_memory?.hasHistory ? '#e8f5e8' : '#f5f5f5', borderRadius: 6 }}>
                           {selectedLog.conversation_memory?.hasHistory ? 
                             `💾 ${selectedLog.conversation_memory.messageCount} messages` : 
-                            'No memory'
+                            selectedLog.ai_processing?.conversationMemory?.hasHistory ?
+                              `💾 ${selectedLog.ai_processing.conversationMemory.messageCount} messages` :
+                              'No memory'
                           }
                         </div>
                       </div>
@@ -675,7 +683,7 @@ export function LogsPage() {
                       <div>
                         <label style={{ ...baseStyles.label, marginBottom: 4 }}>General Knowledge</label>
                         <div style={{ padding: 8, backgroundColor: '#e3f2fd', borderRadius: 6 }}>
-                          {selectedLog.ai_processing.general_knowledge_length || 0} characters
+                          {selectedLog.ai_processing?.generalKnowledgeLength || selectedLog.ai_processing?.general_knowledge_length || 0} characters
                         </div>
                       </div>
 

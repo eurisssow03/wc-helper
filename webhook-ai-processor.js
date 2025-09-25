@@ -483,20 +483,29 @@ async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = [
         finalScore: c.final,
         isActive: c.faq.is_active
       })),
-      confidenceThreshold: 'API key required',
+      confidenceThreshold: 0.6, // Default confidence threshold
       similarityThreshold: 0.3, // Default similarity threshold
-      searchMethod: 'Simple similarity',
+      searchMethod: 'Combined Similarity (Tags + Question)',
       rerankingApplied: true,
-      confidenceCategory: 'Error',
+      confidenceCategory: confidence >= 0.8 ? 'High' : confidence >= 0.5 ? 'Medium' : 'Low',
       finalDecision: 'No response - API key required',
       contextItems: contextItems,
+      generalKnowledgeLength: homestayGeneralKnowledge.length,
+      conversationMemory: {
+        phoneNumber: fromNumber,
+        messageCount: conversationMemory.messages.length,
+        hasHistory: conversationMemory.messages.length > 0,
+        currentProperty: conversationMemory.context?.currentProperty || null
+      },
       processingSteps: [
         'FAQ filtering completed',
-        'Simple similarity search completed (threshold: 0.3)',
+        'Combined similarity search completed (tags + question)',
         'Reranking with signals completed',
         'Top ranking FAQ selected as primary context',
         'Homestay data available as knowledge base',
         `General knowledge available (${homestayGeneralKnowledge.length} characters)`,
+        'Conversation memory loaded',
+        'Property context checked',
         'API key validation failed - no response generated'
       ]
     }
