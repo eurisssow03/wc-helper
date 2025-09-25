@@ -2,27 +2,11 @@ import { useEffect, useState } from "react";
 import { STORAGE_KEYS, demoUserSeed, defaultSettings } from "../utils/constants.js";
 import { sha256Hex, nowISO } from "../utils/helpers.js";
 import { databaseConnectionService } from "../services/databaseConnectionService.js";
-import { readLS, writeLS } from "../services/storage.js";
+import { readLS, writeLS, initOnce } from "../services/storage.js";
 
-async function initOnce() {
-  console.log('🔧 useAuth: Initializing default data...');
+async function initUsers() {
+  console.log('👤 useAuth: Initializing users...');
   
-  if (!localStorage.getItem(STORAGE_KEYS.settings)) {
-    writeLS(STORAGE_KEYS.settings, defaultSettings);
-    console.log('✅ useAuth: Created default settings');
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.homestays)) {
-    writeLS(STORAGE_KEYS.homestays, []);
-    console.log('✅ useAuth: Created empty homestays');
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.faqs)) {
-    writeLS(STORAGE_KEYS.faqs, []);
-    console.log('✅ useAuth: Created empty FAQs');
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.logs)) {
-    writeLS(STORAGE_KEYS.logs, []);
-    console.log('✅ useAuth: Created empty logs');
-  }
   if (!localStorage.getItem(STORAGE_KEYS.users)) {
     console.log('👤 useAuth: Creating default admin user...');
     // Initialize with default admin user with SHA-256 hashed password
@@ -78,19 +62,23 @@ export function useAuth() {
   const initializeAuth = async () => {
     console.log('🔧 useAuth: Initializing authentication...');
     
+    // Initialize basic data first
+    await initOnce();
+    
     // Check database connection
     const dbCheck = await databaseConnectionService.checkConnection();
     setDbStatus(dbCheck.connected ? 'connected' : 'disconnected');
     
     if (dbCheck.connected) {
       console.log('✅ useAuth: Database connected, using database authentication');
-      // Initialize with database
-      await initOnce();
     } else {
       console.log('⚠️ useAuth: Database disconnected, using fallback authentication');
       // Initialize fallback data
       await databaseConnectionService.initializeFallbackData();
     }
+    
+    // Initialize users
+    await initUsers();
     
     // Load users
     const arr = readLS(STORAGE_KEYS.users, []); 
