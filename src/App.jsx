@@ -61,6 +61,9 @@ function AppShell() {
     window.location.reload();
   };
   
+  // Make forceLogout available globally for debugging
+  window.forceLogout = forceLogout;
+  
   if (!session) {
     console.log('🔍 AppShell: No session, showing login page');
     return <LoginPage onLogin={login} />;
