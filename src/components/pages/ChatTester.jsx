@@ -3,11 +3,24 @@ import { readLS, writeLS, STORAGE_KEYS } from '../../services/storage.js';
 import { baseStyles, breakpoints } from '../../utils/styles.js';
 import { formatDateTime } from '../../utils/helpers.js';
 import aiService from '../../services/aiService.js';
+import { conversationMemoryService } from '../../services/conversationMemoryService.js';
+
+// Memory status component
+function MemoryStatus({ refresh }) {
+  const memoryContext = conversationMemoryService.getConversationContext('chat-tester');
+  
+  return memoryContext.recentMessages.length > 0 ? (
+    <span style={{ color: '#10b981', marginLeft: 8 }}>
+      💾 Memory: {memoryContext.recentMessages.length} messages
+    </span>
+  ) : null;
+}
 
 export function ChatTester({ onLogged }) {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [memoryRefresh, setMemoryRefresh] = useState(0);
   const [faqs, setFaqs] = useState([]);
   const [homestays, setHomestays] = useState([]);
   const messagesEndRef = useRef(null);
@@ -103,6 +116,9 @@ export function ChatTester({ onLogged }) {
         onLogged();
       }
 
+      // Trigger memory status refresh
+      setMemoryRefresh(prev => prev + 1);
+
     } catch (error) {
       console.error('❌ ChatTester: Error processing message:', error);
       
@@ -122,7 +138,16 @@ export function ChatTester({ onLogged }) {
 
 
   const clearChat = () => {
+    // Clear visual messages
     setMessages([]);
+    
+    // Clear conversation memory for chat-tester
+    conversationMemoryService.clearConversation('chat-tester');
+    
+    // Trigger memory status refresh
+    setMemoryRefresh(prev => prev + 1);
+    
+    console.log('🧹 ChatTester: Cleared chat messages and conversation memory');
   };
 
   const handleKeyPress = (e) => {
@@ -149,17 +174,26 @@ export function ChatTester({ onLogged }) {
           <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Chat Tester</h3>
           <div style={{ fontSize: 12, color: '#6c757d', marginTop: 4 }}>
             Test customer service assistant responses • FAQs: {faqs.length} • Homestays: {homestays.length}
+            <MemoryStatus refresh={memoryRefresh} />
           </div>
         </div>
-        <button 
-          onClick={clearChat}
+        <button
+          onClick={() => {
+            if (confirm('Clear chat messages and conversation memory? This will start a fresh testing session.')) {
+              clearChat();
+            }
+          }}
           style={{
             ...baseStyles.btnGhost,
             fontSize: 12,
-            padding: '6px 12px'
+            padding: '6px 12px',
+            backgroundColor: '#fef2f2',
+            borderColor: '#fecaca',
+            color: '#dc2626'
           }}
+          title="Clear chat messages and conversation memory for fresh testing"
         >
-          Clear Chat
+          🧹 Clear Chat & Memory
         </button>
       </div>
 
