@@ -155,7 +155,34 @@ class AIService {
     // Load API key from frontend settings
     const apiKey = await this.loadApiKey();
     if (!apiKey) {
-      console.log('⚠️ No API key available - AI functionality will be limited');
+      console.error('🚨 CRITICAL: No valid API key found!');
+      console.error('🔧 Developer Alert: AI functionality requires a valid OpenAI API key');
+      console.error('📝 Please check Settings → AI Config → API Key');
+      console.error('❌ AI processing aborted - no response will be generated');
+      
+      const processingTime = Date.now() - startTime;
+      return {
+        answer: null,
+        confidence: 0,
+        matchedQuestion: null,
+        processingTime,
+        contextItems: [],
+        source: 'AIService',
+        processingDetails: {
+          totalFaqs: this.faqs.length,
+          activeFaqs: this.getActiveFAQs().length,
+          candidatesFound: 0,
+          topCandidates: [],
+          confidenceThreshold: 'API key required',
+          similarityThreshold: this.settings.similarityThreshold || 0.3,
+          finalDecision: 'No response - API key required',
+          contextItems: [],
+          processingSteps: ['API key validation failed', 'Processing aborted'],
+          searchMethod: 'None - API key required',
+          rerankingApplied: false,
+          confidenceCategory: 'Error'
+        }
+      };
     }
     
     // Log final AI provider after potential fallback
@@ -317,25 +344,10 @@ class AIService {
           processingDetails.processingSteps.push(`Embedding failed, used simple similarity fallback`);
         }
       } else {
-        // Use combined similarity when no API key
-        console.log('🤖 Using combined similarity search (no API key)');
-        candidates = activeFAQs
-          .map(faq => {
-            const combinedMatch = this.calculateCombinedSimilarity(userMessage, faq);
-            console.log(`🤖 FAQ "${faq.question}" - Combined similarity: ${combinedMatch.score} (${combinedMatch.method})`);
-            return { faq, sim: combinedMatch.score, matchMethod: combinedMatch.method };
-          })
-          .filter(c => c.sim > (this.settings.similarityThreshold || 0.3))
-          .sort((a, b) => b.sim - a.sim)
-          .slice(0, 10);
-          
-        console.log('🤖 Simple candidates found:', candidates.length, `(similarity > ${this.settings.similarityThreshold || 0.3})`);
-        
-        // Update processing details
-        processingDetails.candidatesFound = candidates.length;
-        processingDetails.similarityThreshold = this.settings.similarityThreshold || 0.3;
-        processingDetails.searchMethod = 'Simple similarity';
-        processingDetails.processingSteps.push(`Simple similarity search completed (threshold: ${this.settings.similarityThreshold || 0.3})`);
+        // This should never happen since we check API key at the beginning
+        console.error('🚨 CRITICAL ERROR: No API key but reached similarity search!');
+        console.error('🔧 Developer Alert: This indicates a logic error in the code');
+        throw new Error('API key validation failed - this should not happen');
       }
     } catch (error) {
       console.error('🤖 Embedding search error:', error);
@@ -404,63 +416,82 @@ class AIService {
     console.log('  🏷️ Confidence Category:', confidenceCategory);
     console.log('  🔍 Match Method:', bestMatch?.matchMethod || 'unknown');
 
-    // Prepare context for chat model
-    const contextItems = reranked.slice(0, 3).map(r => ({
+    // Prepare context for chat model - use top 1 ranking FAQ as primary context
+    const topContext = bestMatch ? [{
+      question: bestMatch.faq.question,
+      answer: bestMatch.faq.answer,
+      confidence: bestMatch.final,
+      isTopMatch: true
+    }] : [];
+    
+    // Add additional context from top 3 candidates
+    const additionalContext = reranked.slice(1, 3).map(r => ({
       question: r.faq.question,
       answer: r.faq.answer,
-      confidence: r.final
+      confidence: r.final,
+      isTopMatch: false
     }));
-
+    
+    const contextItems = [...topContext, ...additionalContext];
     console.log('  📝 Context Items:', contextItems.length);
+    console.log('  🏆 Top Context:', topContext.length > 0 ? `"${topContext[0].question}"` : 'None');
+    console.log('  📚 Additional Context:', additionalContext.length);
 
     let answer;
     
-    // No confidence threshold - always use best match
-    console.log('⚙️ Strategy: Using best match (no threshold)');
+    // Always use chat model for response generation
+    console.log('⚙️ Strategy: Always using Chat Model for response generation');
     
     // Update processing details
-    processingDetails.confidenceThreshold = 'No threshold (using best match)';
+    processingDetails.confidenceThreshold = 'Always use Chat Model';
     processingDetails.contextItems = contextItems;
     
-    // Use chat model if available (no confidence threshold)
-    if (this.apiKey && confidence > 0) {
-      console.log('🤖 Using Chat Model for response generation');
-      console.log('  📡 Provider:', this.settings.aiProvider);
-      console.log('  🔑 API Key:', !!this.apiKey);
-      try {
-        answer = await callChatModel({
-          settings: this.settings,
-          apiKey: this.apiKey,
-          systemPrompt: "You are a professional homestay customer service assistant. Please answer customer questions based on the provided FAQ information. FAQ information takes TOP PRIORITY. Only use homestay data to supplement FAQ answers when relevant. If no FAQ matches, provide general homestay information. Always prioritize FAQ knowledge over general homestay data.",
-          contextItems,
-          userMessage,
-          homestays: this.homestays
-        });
-        console.log('  ✅ Chat model response generated');
-        processingDetails.finalDecision = 'Chat model (high confidence)';
-        processingDetails.processingSteps.push('Chat model response generated');
-      } catch (error) {
-        console.error('  ❌ Chat model error:', error);
-        answer = this.getFallbackAnswer(userMessage, contextItems);
-        processingDetails.finalDecision = 'Fallback (chat model error)';
-        processingDetails.processingSteps.push('Chat model failed, using fallback');
-      }
-    } else {
-      // Always use the best match if available, regardless of confidence threshold
-      if (bestMatch && confidence > 0) {
-        answer = bestMatch.faq.answer;
-        console.log(`📝 Using FAQ answer (confidence: ${confidence.toFixed(3)})`);
-        console.log(`  ❓ Question: "${matchedQuestion}"`);
-        console.log(`  💬 Answer: "${answer.substring(0, 100)}${answer.length > 100 ? '...' : ''}"`);
-        processingDetails.finalDecision = `FAQ answer (confidence: ${confidence.toFixed(3)})`;
-        processingDetails.processingSteps.push('FAQ answer selected (no threshold)');
-      } else {
-        answer = this.getFallbackAnswer(userMessage, contextItems);
-        console.log('🔄 Using fallback answer (no matches found)');
-        console.log(`  💬 Fallback: "${answer.substring(0, 100)}${answer.length > 100 ? '...' : ''}"`);
-        processingDetails.finalDecision = 'Fallback (no matches)';
-        processingDetails.processingSteps.push('Fallback answer selected (no matches)');
-      }
+    // Always use chat model (API key already validated)
+    console.log('🤖 Using Chat Model for response generation');
+    console.log('  📡 Provider:', this.settings.aiProvider);
+    console.log('  🔑 API Key:', !!this.apiKey);
+    console.log('  🏨 Homestay Data:', this.homestays.length, 'properties');
+    console.log('  📊 Top Match Confidence:', confidence.toFixed(4));
+    
+    try {
+      // Enhanced system prompt with homestay data as knowledge base
+      const systemPrompt = `You are a professional homestay customer service assistant. 
+
+KNOWLEDGE BASE:
+- FAQ Information: Use the provided FAQ context as your primary knowledge source
+- Homestay Data: Use the homestay information as supplementary knowledge to enhance your responses
+
+RESPONSE GUIDELINES:
+1. Always base your response on the FAQ information provided in the context
+2. Use homestay data to supplement and enrich your FAQ-based answers
+3. If the top FAQ match has high confidence, prioritize that information
+4. If no FAQ matches well, use homestay data to provide helpful information
+5. Be conversational, helpful, and professional
+6. Provide specific details about properties, amenities, and services when relevant
+7. Always maintain a welcoming and informative tone
+
+Remember: FAQ information takes TOP PRIORITY, but homestay data should be used to make responses more comprehensive and helpful.`;
+
+      answer = await callChatModel({
+        settings: this.settings,
+        apiKey: this.apiKey,
+        systemPrompt,
+        contextItems,
+        userMessage,
+        homestays: this.homestays
+      });
+      console.log('  ✅ Chat model response generated');
+      processingDetails.finalDecision = `Chat model (confidence: ${confidence.toFixed(3)})`;
+      processingDetails.processingSteps.push('Chat model response generated with homestay knowledge base');
+    } catch (error) {
+      console.error('  ❌ Chat model error:', error);
+      console.error('🚨 CRITICAL: Chat model failed - no response will be generated');
+      console.error('🔧 Developer Alert: Check API key validity and OpenAI service status');
+      
+      // Return null answer instead of fallback
+      answer = null;
+      processingDetails.finalDecision = 'No response - Chat model failed';
+      processingDetails.processingSteps.push('Chat model failed, no response generated');
     }
 
     const result = {

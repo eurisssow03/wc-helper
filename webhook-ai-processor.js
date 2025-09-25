@@ -298,16 +298,37 @@ async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = [
 
   console.log('🤖 Webhook AI: Best match:', { question: matchedQuestion, confidence });
 
+  // Prepare context for chat model - use top 1 ranking FAQ as primary context
+  const topContext = bestMatch ? [{
+    question: bestMatch.faq.question,
+    answer: bestMatch.faq.answer,
+    confidence: bestMatch.final,
+    isTopMatch: true
+  }] : [];
+  
+  // Add additional context from top 3 candidates
+  const additionalContext = reranked.slice(1, 3).map(r => ({
+    question: r.faq.question,
+    answer: r.faq.answer,
+    confidence: r.final,
+    isTopMatch: false
+  }));
+  
+  const contextItems = [...topContext, ...additionalContext];
+  console.log('  📝 Context Items:', contextItems.length);
+  console.log('  🏆 Top Context:', topContext.length > 0 ? `"${topContext[0].question}"` : 'None');
+  console.log('  📚 Additional Context:', additionalContext.length);
+
   let answer;
   
-  // Always use the best match if available, regardless of confidence threshold
-  if (bestMatch && confidence > 0) {
-    answer = bestMatch.faq.answer;
-    console.log(`🤖 Webhook AI: Using FAQ answer (confidence: ${confidence.toFixed(3)})`);
-  } else {
-    answer = getFallbackAnswer(userMessage);
-    console.log('🤖 Webhook AI: Using fallback answer (no matches found)');
-  }
+  // Webhook mode - no API key available, so no response
+  console.log('⚙️ Strategy: Webhook mode - no API key available');
+  console.error('🚨 CRITICAL: Webhook AI requires API key for response generation');
+  console.error('🔧 Developer Alert: Webhook server needs OpenAI API key configuration');
+  console.error('❌ No response will be generated from webhook');
+  
+  // Return null answer - no response
+  answer = null;
 
   const result = {
     answer,
@@ -325,18 +346,20 @@ async function processMessageWithAI(userMessage, fromNumber, faqs, homestays = [
         finalScore: c.final,
         isActive: c.faq.is_active
       })),
-      confidenceThreshold: 0.6, // Default threshold for webhook
+      confidenceThreshold: 'API key required',
       similarityThreshold: 0.3, // Default similarity threshold
       searchMethod: 'Simple similarity',
       rerankingApplied: true,
-      confidenceCategory: confidence >= 0.8 ? 'High' : confidence >= 0.5 ? 'Medium' : 'Low',
-      finalDecision: confidence > 0.6 ? 'FAQ answer (high confidence)' : 'Fallback (low confidence)',
-      contextItems: [],
+      confidenceCategory: 'Error',
+      finalDecision: 'No response - API key required',
+      contextItems: contextItems,
       processingSteps: [
         'FAQ filtering completed',
         'Simple similarity search completed (threshold: 0.3)',
         'Reranking with signals completed',
-        confidence > 0.6 ? 'FAQ answer selected' : 'Fallback answer selected'
+        'Top ranking FAQ selected as primary context',
+        'Homestay data available as knowledge base',
+        'API key validation failed - no response generated'
       ]
     }
   };

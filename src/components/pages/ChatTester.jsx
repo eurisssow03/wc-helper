@@ -78,18 +78,25 @@ export function ChatTester({ onLogged }) {
       
       console.log('🤖 ChatTester: Response received:', response);
       
-      // Add bot response to chat
-      const botMessage = {
-        id: Date.now() + 1,
-        type: 'bot',
-        text: response.answer,
-        timestamp: new Date().toISOString(),
-        confidence: response.confidence,
-        matchedQuestion: response.matchedQuestion,
-        processingTime: response.processingTime
-      };
+      // Check if response is valid
+      if (response.answer) {
+        // Add bot response to chat
+        const botMessage = {
+          id: Date.now() + 1,
+          type: 'bot',
+          text: response.answer,
+          timestamp: new Date().toISOString(),
+          confidence: response.confidence,
+          matchedQuestion: response.matchedQuestion,
+          processingTime: response.processingTime
+        };
 
-      setMessages(prev => [...prev, botMessage]);
+        setMessages(prev => [...prev, botMessage]);
+      } else {
+        // No response generated (API key missing or error)
+        console.warn('⚠️ ChatTester: No response generated - check console for details');
+        // Don't add any message to chat - user will see no response
+      }
 
       // Trigger callback to update logs
       if (onLogged) {
