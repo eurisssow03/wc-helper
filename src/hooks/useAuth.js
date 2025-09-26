@@ -66,13 +66,20 @@ export function useAuth() {
     await initOnce();
     
     // Check database connection
+    console.log('🔍 useAuth: Checking database connection...');
     const dbCheck = await databaseConnectionService.checkConnection();
-    setDbStatus(dbCheck.connected ? 'connected' : 'disconnected');
+    console.log('📊 useAuth: Database check result:', dbCheck);
+    
+    const newDbStatus = dbCheck.connected ? 'connected' : 'disconnected';
+    setDbStatus(newDbStatus);
+    console.log('🔌 useAuth: Database status set to:', newDbStatus);
     
     if (dbCheck.connected) {
       console.log('✅ useAuth: Database connected, using database authentication');
+      console.log('📊 useAuth: Database details:', dbCheck.data);
     } else {
       console.log('⚠️ useAuth: Database disconnected, using fallback authentication');
+      console.log('❌ useAuth: Database error:', dbCheck.error);
       // Initialize fallback data
       await databaseConnectionService.initializeFallbackData();
     }
@@ -83,6 +90,7 @@ export function useAuth() {
     // Load users
     const arr = readLS(STORAGE_KEYS.users, []); 
     setUsers(arr);
+    console.log('👥 useAuth: Loaded users:', arr.length);
   };
   
   useEffect(() => { 
@@ -160,5 +168,18 @@ export function useAuth() {
     setSession(null); 
   };
 
-  return { session, login, logout, users, setUsers, dbStatus };
+  // Manual database connection test (for debugging)
+  const testDatabaseConnection = async () => {
+    console.log('🧪 useAuth: Manual database connection test...');
+    const result = await databaseConnectionService.checkConnection();
+    console.log('📊 useAuth: Manual test result:', result);
+    setDbStatus(result.connected ? 'connected' : 'disconnected');
+    return result;
+  };
+  
+  // Make test function available globally for debugging
+  window.testDatabaseConnection = testDatabaseConnection;
+  window.databaseConnectionService = databaseConnectionService;
+
+  return { session, login, logout, users, setUsers, dbStatus, testDatabaseConnection };
 }
