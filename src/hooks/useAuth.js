@@ -67,25 +67,15 @@ export function useAuth() {
       await initOnce();
       console.log('✅ useAuth: Basic data initialized');
       
-      // Check database connection
-      console.log('🔍 useAuth: Checking database connection...');
-      const dbCheck = await databaseConnectionService.checkConnection();
-      console.log('📊 useAuth: Database check result:', dbCheck);
+      // Force database status to disconnected for now
+      console.log('🔍 useAuth: Setting database status to disconnected (no database configured)');
+      setDbStatus('disconnected');
+      console.log('🔌 useAuth: Database status set to: disconnected');
       
-      const newDbStatus = dbCheck.connected ? 'connected' : 'disconnected';
-      setDbStatus(newDbStatus);
-      console.log('🔌 useAuth: Database status set to:', newDbStatus);
-      
-      if (dbCheck.connected) {
-        console.log('✅ useAuth: Database connected, using database authentication');
-        console.log('📊 useAuth: Database details:', dbCheck.data);
-      } else {
-        console.log('⚠️ useAuth: Database disconnected, using fallback authentication');
-        console.log('❌ useAuth: Database error:', dbCheck.error);
-        // Initialize fallback data
-        await databaseConnectionService.initializeFallbackData();
-        console.log('✅ useAuth: Fallback data initialized');
-      }
+      // Always use fallback authentication for now
+      console.log('⚠️ useAuth: Using fallback authentication (no database configured)');
+      await databaseConnectionService.initializeFallbackData();
+      console.log('✅ useAuth: Fallback data initialized');
       
       // Initialize users
       await initUsers();
@@ -118,63 +108,25 @@ export function useAuth() {
     console.log('🔐 useAuth: Login attempt for:', email);
     console.log('🔌 useAuth: Database status:', dbStatus);
     
-    // Check if we should use fallback authentication
-    if (databaseConnectionService.shouldUseFallback()) {
-      console.log('🔄 useAuth: Using fallback authentication');
-      const result = await databaseConnectionService.authenticateFallback(email, password);
-      
-      if (result.success) {
-        const sess = { 
-          email: result.user.username, 
-          role: result.user.role, 
-          signedInAt: nowISO(),
-          authMode: 'fallback'
-        }; 
-        writeLS(STORAGE_KEYS.session, sess); 
-        setSession(sess); 
-        return { ok: true }; 
-      } else {
-        return { ok: false, message: result.error || "Email or password is incorrect" };
-      }
-    }
+    // Always use fallback authentication for now (no database configured)
+    console.log('🔄 useAuth: Using fallback authentication (no database configured)');
+    const result = await databaseConnectionService.authenticateFallback(email, password);
     
-    // Database authentication (if connected)
-    const list = readLS(STORAGE_KEYS.users, []); 
-    console.log('👥 useAuth: Available users:', list.length);
-    
-    const hash = await sha256Hex(password);
-    console.log('🔑 useAuth: Password hash:', hash);
-    
-    const found = list.find(u => {
-      const usernameMatch = u.username.toLowerCase() === email.toLowerCase();
-      const passwordMatch = u.password === hash;
-      const isActive = u.is_active;
-      
-      console.log('🔍 useAuth: Checking user:', u.username, {
-        usernameMatch,
-        passwordMatch,
-        isActive,
-        storedHash: u.password
-      });
-      
-      return usernameMatch && passwordMatch && isActive;
-    });
-    
-    if (found) { 
-      console.log('✅ useAuth: Login successful for:', found.username);
+    if (result.success) {
+      console.log('✅ useAuth: Fallback authentication successful');
       const sess = { 
-        email: found.username, 
-        role: found.role, 
+        email: result.user.username, 
+        role: result.user.role, 
         signedInAt: nowISO(),
-        authMode: 'database'
+        authMode: 'fallback'
       }; 
       writeLS(STORAGE_KEYS.session, sess); 
       setSession(sess); 
       return { ok: true }; 
+    } else {
+      console.log('❌ useAuth: Fallback authentication failed:', result.error);
+      return { ok: false, message: result.error || "Email or password is incorrect" };
     }
-    
-    console.log('❌ useAuth: Login failed - no matching user found');
-    return { ok: false, message: "Email or password is incorrect" };
   };
 
   const logout = () => { 

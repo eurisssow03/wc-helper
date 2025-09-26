@@ -18,15 +18,23 @@ class DatabaseConnectionService {
       console.log('🔍 DatabaseConnectionService: Checking database connection...');
       this.connectionStatus = 'checking';
       
-      // For now, always return disconnected since we don't have a database set up
-      // This ensures the app uses fallback authentication
-      console.log('⚠️ DatabaseConnectionService: No database configured, using fallback mode');
+      // Always return disconnected for now since we don't have a database configured
+      // This forces the app to use fallback authentication
+      console.log('⚠️ DatabaseConnectionService: Database not configured - using fallback mode');
+      
       this.isConnected = false;
       this.connectionStatus = 'disconnected';
       this.fallbackMode = true;
       this.lastCheck = new Date().toISOString();
       
-      return { connected: false, error: 'No database configured' };
+      console.log('🔌 DatabaseConnectionService: Status set to disconnected');
+      console.log('🔄 DatabaseConnectionService: Fallback mode enabled');
+      
+      return { 
+        connected: false, 
+        error: 'Database not configured - using fallback authentication',
+        fallbackMode: true
+      };
       
     } catch (error) {
       console.warn('⚠️ DatabaseConnectionService: Database connection failed:', error.message);
@@ -35,7 +43,7 @@ class DatabaseConnectionService {
       this.fallbackMode = true;
       this.lastCheck = new Date().toISOString();
       
-      return { connected: false, error: error.message };
+      return { connected: false, error: error.message, fallbackMode: true };
     }
   }
 
