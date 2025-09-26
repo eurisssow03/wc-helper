@@ -62,35 +62,49 @@ export function useAuth() {
   const initializeAuth = async () => {
     console.log('🔧 useAuth: Initializing authentication...');
     
-    // Initialize basic data first
-    await initOnce();
-    
-    // Check database connection
-    console.log('🔍 useAuth: Checking database connection...');
-    const dbCheck = await databaseConnectionService.checkConnection();
-    console.log('📊 useAuth: Database check result:', dbCheck);
-    
-    const newDbStatus = dbCheck.connected ? 'connected' : 'disconnected';
-    setDbStatus(newDbStatus);
-    console.log('🔌 useAuth: Database status set to:', newDbStatus);
-    
-    if (dbCheck.connected) {
-      console.log('✅ useAuth: Database connected, using database authentication');
-      console.log('📊 useAuth: Database details:', dbCheck.data);
-    } else {
-      console.log('⚠️ useAuth: Database disconnected, using fallback authentication');
-      console.log('❌ useAuth: Database error:', dbCheck.error);
-      // Initialize fallback data
+    try {
+      // Initialize basic data first
+      await initOnce();
+      console.log('✅ useAuth: Basic data initialized');
+      
+      // Check database connection
+      console.log('🔍 useAuth: Checking database connection...');
+      const dbCheck = await databaseConnectionService.checkConnection();
+      console.log('📊 useAuth: Database check result:', dbCheck);
+      
+      const newDbStatus = dbCheck.connected ? 'connected' : 'disconnected';
+      setDbStatus(newDbStatus);
+      console.log('🔌 useAuth: Database status set to:', newDbStatus);
+      
+      if (dbCheck.connected) {
+        console.log('✅ useAuth: Database connected, using database authentication');
+        console.log('📊 useAuth: Database details:', dbCheck.data);
+      } else {
+        console.log('⚠️ useAuth: Database disconnected, using fallback authentication');
+        console.log('❌ useAuth: Database error:', dbCheck.error);
+        // Initialize fallback data
+        await databaseConnectionService.initializeFallbackData();
+        console.log('✅ useAuth: Fallback data initialized');
+      }
+      
+      // Initialize users
+      await initUsers();
+      console.log('✅ useAuth: Users initialized');
+      
+      // Load users
+      const arr = readLS(STORAGE_KEYS.users, []); 
+      setUsers(arr);
+      console.log('👥 useAuth: Loaded users:', arr.length);
+      
+    } catch (error) {
+      console.error('❌ useAuth: Error during initialization:', error);
+      // Set fallback mode on error
+      setDbStatus('disconnected');
       await databaseConnectionService.initializeFallbackData();
+      await initUsers();
+      const arr = readLS(STORAGE_KEYS.users, []); 
+      setUsers(arr);
     }
-    
-    // Initialize users
-    await initUsers();
-    
-    // Load users
-    const arr = readLS(STORAGE_KEYS.users, []); 
-    setUsers(arr);
-    console.log('👥 useAuth: Loaded users:', arr.length);
   };
   
   useEffect(() => { 

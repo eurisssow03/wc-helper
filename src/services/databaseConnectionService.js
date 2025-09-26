@@ -18,71 +18,15 @@ class DatabaseConnectionService {
       console.log('🔍 DatabaseConnectionService: Checking database connection...');
       this.connectionStatus = 'checking';
       
-      // First, check if we're in a browser environment and if the webhook server is available
-      if (typeof window === 'undefined') {
-        throw new Error('Not in browser environment');
-      }
+      // For now, always return disconnected since we don't have a database set up
+      // This ensures the app uses fallback authentication
+      console.log('⚠️ DatabaseConnectionService: No database configured, using fallback mode');
+      this.isConnected = false;
+      this.connectionStatus = 'disconnected';
+      this.fallbackMode = true;
+      this.lastCheck = new Date().toISOString();
       
-      // Create a timeout promise
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Connection timeout after 5 seconds')), 5000);
-      });
-      
-      // Create the fetch promise - try multiple endpoints
-      const endpoints = [
-        '/api/postgres/health',
-        'https://wc-helper.onrender.com/api/postgres/health',
-        'http://localhost:3001/api/postgres/health'
-      ];
-      
-      let lastError = null;
-      
-      for (const endpoint of endpoints) {
-        try {
-          console.log(`🔍 DatabaseConnectionService: Trying endpoint: ${endpoint}`);
-          
-          const fetchPromise = fetch(endpoint, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            mode: 'cors'
-          });
-          
-          // Race between fetch and timeout
-          const response = await Promise.race([fetchPromise, timeoutPromise]);
-          
-          if (response.ok) {
-            const data = await response.json();
-            console.log(`📊 DatabaseConnectionService: Response from ${endpoint}:`, data);
-            
-            // Additional validation - check if the response actually indicates a successful database connection
-            if (data.success && data.message && data.message.includes('successful')) {
-              this.isConnected = true;
-              this.connectionStatus = 'connected';
-              this.fallbackMode = false;
-              this.lastCheck = new Date().toISOString();
-              
-              console.log('✅ DatabaseConnectionService: Database connected successfully');
-              console.log('📊 DatabaseConnectionService: Connection details:', data);
-              return { connected: true, data };
-            } else {
-              lastError = new Error(`Database health check returned unsuccessful response: ${JSON.stringify(data)}`);
-              continue;
-            }
-          } else {
-            lastError = new Error(`HTTP ${response.status}: ${response.statusText} from ${endpoint}`);
-            continue;
-          }
-        } catch (error) {
-          console.log(`⚠️ DatabaseConnectionService: Endpoint ${endpoint} failed:`, error.message);
-          lastError = error;
-          continue;
-        }
-      }
-      
-      // If we get here, all endpoints failed
-      throw lastError || new Error('All database endpoints failed');
+      return { connected: false, error: 'No database configured' };
       
     } catch (error) {
       console.warn('⚠️ DatabaseConnectionService: Database connection failed:', error.message);
